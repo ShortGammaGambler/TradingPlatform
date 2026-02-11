@@ -291,7 +291,7 @@ class OptionsFlowScanner:
                 "OI": f.open_interest,
                 "V/OI": round(f.volume / max(f.open_interest, 1), 1),
                 "Premium": f"${f.premium:,.0f}",
-                "IV": f"{f.iv:.1%}",
+                "IV": f"{f.implied_vol:.1%}",
                 "Score": round(f.score, 1),
                 "Details": f.details,
             })

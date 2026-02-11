@@ -17,9 +17,9 @@ class TestDelta:
         assert 0.45 < delta < 0.65
 
     def test_atm_put_delta_near_neg05(self, calc):
-        """ATM put delta should be approximately -0.5."""
+        """ATM put delta should be approximately -0.5 (drift shifts it slightly)."""
         delta = calc.delta(S=100, K=100, T=0.25, r=0.05, sigma=0.2, option_type="put")
-        assert -0.65 < delta < -0.45
+        assert -0.65 < delta < -0.35
 
     def test_deep_itm_call(self, calc):
         """Deep ITM call delta should approach 1."""
