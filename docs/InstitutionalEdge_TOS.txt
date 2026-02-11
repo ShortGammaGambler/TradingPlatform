@@ -1,0 +1,266 @@
+# INSTITUTIONAL EDGE - Advanced ThinkorSwim Custom Study
+# Combines: Smart Money Concepts, Order Flow, Volume Profile, and Statistical Edge
+# Created: 2025-12-22
+
+#==============================================
+# PART 1: SMART MONEY ORDER BLOCKS & LIQUIDITY
+#==============================================
+
+declare upper;
+
+# Inputs
+input showOrderBlocks = yes;
+input showLiquidityLevels = yes;
+input showVolumeProfile = yes;
+input showSmartMoneyDivergence = yes;
+input volumeThreshold = 1.5; # Multiplier for significant volume
+input lookbackPeriod = 50;
+
+# Price Data
+def h = high;
+def l = low;
+def c = close;
+def o = open;
+def v = volume;
+
+# Average Volume
+def avgVolume = Average(v, lookbackPeriod);
+
+# Order Block Detection (Institutional buying/selling zones)
+def bullishOB = c > o and c[1] < o[1] and v > avgVolume * volumeThreshold and l[1] < l;
+def bearishOB = c < o and c[1] > o[1] and v > avgVolume * volumeThreshold and h[1] > h;
+
+# Order Block Support/Resistance Levels
+def obSupport = if bullishOB then l else obSupport[1];
+def obResistance = if bearishOB then h else obResistance[1];
+
+plot OrderBlockSupport = if showOrderBlocks then obSupport else Double.NaN;
+plot OrderBlockResistance = if showOrderBlocks then obResistance else Double.NaN;
+
+OrderBlockSupport.SetDefaultColor(Color.GREEN);
+OrderBlockSupport.SetLineWeight(2);
+OrderBlockSupport.SetStyle(Curve.FIRM);
+
+OrderBlockResistance.SetDefaultColor(Color.RED);
+OrderBlockResistance.SetLineWeight(2);
+OrderBlockResistance.SetStyle(Curve.FIRM);
+
+#==============================================
+# PART 2: LIQUIDITY SWEEPS (Stop Hunts)
+#==============================================
+
+def highestHigh = Highest(h, lookbackPeriod);
+def lowestLow = Lowest(l, lookbackPeriod);
+
+# Detect when price sweeps highs/lows then reverses (liquidity grab)
+def bullishSweep = l < lowestLow[1] and c > o and v > avgVolume * 1.3;
+def bearishSweep = h > highestHigh[1] and c < o and v > avgVolume * 1.3;
+
+plot BullishSweepSignal = if bullishSweep then l else Double.NaN;
+plot BearishSweepSignal = if bearishSweep then h else Double.NaN;
+
+BullishSweepSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+BullishSweepSignal.SetDefaultColor(Color.CYAN);
+BullishSweepSignal.SetLineWeight(3);
+
+BearishSweepSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+BearishSweepSignal.SetDefaultColor(Color.MAGENTA);
+BearishSweepSignal.SetLineWeight(3);
+
+#==============================================
+# PART 3: VOLUME DELTA & CUMULATIVE DELTA
+#==============================================
+
+# Approximate Buy vs Sell Volume (institutional accumulation/distribution)
+def buyVolume = if c > o then v * ((c - o) / (h - l)) else 0;
+def sellVolume = if c < o then v * ((o - c) / (h - l)) else 0;
+
+def volumeDelta = buyVolume - sellVolume;
+def cumulativeDelta = TotalSum(volumeDelta);
+
+# Normalize for plotting
+def cdNormalized = (cumulativeDelta - Lowest(cumulativeDelta, lookbackPeriod)) /
+                   (Highest(cumulativeDelta, lookbackPeriod) - Lowest(cumulativeDelta, lookbackPeriod)) * 100;
+
+plot CumulativeDelta = cdNormalized;
+CumulativeDelta.SetDefaultColor(Color.YELLOW);
+CumulativeDelta.SetLineWeight(2);
+CumulativeDelta.AssignValueColor(if volumeDelta > 0 then Color.GREEN else Color.RED);
+
+#==============================================
+# PART 4: MARKET STRUCTURE BREAKS (BOS/CHOCH)
+#==============================================
+
+# Higher Highs / Lower Lows detection
+def hhv = Highest(h, 10);
+def llv = Lowest(l, 10);
+
+def higherHigh = h > hhv[1];
+def lowerLow = l < llv[1];
+
+# Break of Structure (trend continuation)
+def bullishBOS = higherHigh and c > o and v > avgVolume;
+def bearishBOS = lowerLow and c < o and v > avgVolume;
+
+# Change of Character (potential reversal)
+def choch = (higherHigh[1] and lowerLow) or (lowerLow[1] and higherHigh);
+
+plot MarketStructureBull = if bullishBOS then l - (ATR() * 0.5) else Double.NaN;
+plot MarketStructureBear = if bearishBOS then h + (ATR() * 0.5) else Double.NaN;
+
+MarketStructureBull.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+MarketStructureBull.SetDefaultColor(Color.LIGHT_GREEN);
+MarketStructureBull.SetLineWeight(2);
+
+MarketStructureBear.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+MarketStructureBear.SetDefaultColor(Color.LIGHT_RED);
+MarketStructureBear.SetLineWeight(2);
+
+#==============================================
+# PART 5: VOLUME PROFILE POINT OF CONTROL
+#==============================================
+
+# Simplified Volume Profile - finds price level with most volume
+def priceRange = h - l;
+def numLevels = 20;
+def levelSize = priceRange / numLevels;
+
+# Volume-weighted average price
+def vwap = Sum(v * (h + l + c) / 3, lookbackPeriod) / Sum(v, lookbackPeriod);
+
+plot VPOC = if showVolumeProfile then vwap else Double.NaN;
+VPOC.SetDefaultColor(Color.ORANGE);
+VPOC.SetLineWeight(3);
+VPOC.SetStyle(Curve.FIRM);
+
+#==============================================
+# PART 6: SMART MONEY DIVERGENCE
+#==============================================
+
+# Price makes higher high but cumulative delta makes lower high = bearish divergence
+def priceHH = h > h[1] and h[1] > h[2];
+def deltaLH = cumulativeDelta < cumulativeDelta[1] and cumulativeDelta[1] > cumulativeDelta[2];
+
+# Price makes lower low but cumulative delta makes higher low = bullish divergence
+def priceLL = l < l[1] and l[1] < l[2];
+def deltaHL = cumulativeDelta > cumulativeDelta[1] and cumulativeDelta[1] < cumulativeDelta[2];
+
+def bearishDivergence = priceHH and deltaLH;
+def bullishDivergence = priceLL and deltaHL;
+
+plot BullishDivSignal = if showSmartMoneyDivergence and bullishDivergence then l - ATR() else Double.NaN;
+plot BearishDivSignal = if showSmartMoneyDivergence and bearishDivergence then h + ATR() else Double.NaN;
+
+BullishDivSignal.SetPaintingStrategy(PaintingStrategy.TRIANGLES);
+BullishDivSignal.SetDefaultColor(Color.GREEN);
+BullishDivSignal.SetLineWeight(4);
+
+BearishDivSignal.SetPaintingStrategy(PaintingStrategy.TRIANGLES);
+BearishDivSignal.SetDefaultColor(Color.RED);
+BearishDivSignal.SetLineWeight(4);
+
+#==============================================
+# PART 7: INSTITUTIONAL CANDLE PATTERNS
+#==============================================
+
+# Absorption Candle (institutions absorbing retail orders)
+def bodySize = AbsValue(c - o);
+def avgBodySize = Average(bodySize, 20);
+def wickSize = h - l - bodySize;
+
+def absorptionCandle = wickSize > bodySize * 2 and v > avgVolume * 1.5;
+
+# Exhaustion Candle (climax volume with reversal)
+def exhaustionBull = v > avgVolume * 2 and c < o and h > h[1] and c < c[1];
+def exhaustionBear = v > avgVolume * 2 and c > o and l < l[1] and c > c[1];
+
+plot AbsorptionSignal = if absorptionCandle then (h + l) / 2 else Double.NaN;
+AbsorptionSignal.SetDefaultColor(Color.WHITE);
+AbsorptionSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
+AbsorptionSignal.SetLineWeight(3);
+
+#==============================================
+# PART 8: PROBABILITY ZONES (STATISTICAL EDGE)
+#==============================================
+
+# Bollinger Bands with volume filter
+def basis = SimpleMovingAvg(c, 20);
+def dev = 2 * StDev(c, 20);
+def upperBand = basis + dev;
+def lowerBand = basis - dev;
+
+# High probability reversal zones
+def oversold = c < lowerBand and RSI() < 30 and v > avgVolume;
+def overbought = c > upperBand and RSI() > 70 and v > avgVolume;
+
+plot OversoldZone = if oversold then l - ATR() * 0.3 else Double.NaN;
+plot OverboughtZone = if overbought then h + ATR() * 0.3 else Double.NaN;
+
+OversoldZone.SetPaintingStrategy(PaintingStrategy.SQUARES);
+OversoldZone.SetDefaultColor(Color.DARK_GREEN);
+OversoldZone.SetLineWeight(5);
+
+OverboughtZone.SetPaintingStrategy(PaintingStrategy.SQUARES);
+OverboughtZone.SetDefaultColor(Color.DARK_RED);
+OverboughtZone.SetLineWeight(5);
+
+#==============================================
+# PART 9: TREND STRENGTH & MOMENTUM
+#==============================================
+
+# ADX for trend strength
+def adxValue = ADX(14);
+def strongTrend = adxValue > 25;
+
+# Combined momentum
+def momentum = (c - c[10]) / c[10] * 100;
+
+# Background color for trend strength
+AssignPriceColor(
+    if strongTrend and momentum > 2 then Color.DARK_GREEN
+    else if strongTrend and momentum < -2 then Color.DARK_RED
+    else if !strongTrend then Color.GRAY
+    else Color.CURRENT
+);
+
+#==============================================
+# PART 10: ALERTS & SIGNALS
+#==============================================
+
+# Buy Signal: Multiple confirmations
+def buySignal = bullishSweep and bullishDivergence and oversold and strongTrend;
+
+# Sell Signal: Multiple confirmations
+def sellSignal = bearishSweep and bearishDivergence and overbought and strongTrend;
+
+plot BuyAlert = if buySignal then l - ATR() * 2 else Double.NaN;
+plot SellAlert = if sellSignal then h + ATR() * 2 else Double.NaN;
+
+BuyAlert.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+BuyAlert.SetDefaultColor(Color.WHITE);
+BuyAlert.SetLineWeight(5);
+
+SellAlert.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+SellAlert.SetDefaultColor(Color.WHITE);
+SellAlert.SetLineWeight(5);
+
+# Alerts
+Alert(buySignal, "INSTITUTIONAL BUY SIGNAL", Alert.BAR, Sound.Chimes);
+Alert(sellSignal, "INSTITUTIONAL SELL SIGNAL", Alert.BAR, Sound.Bell);
+
+#==============================================
+# LABELS & INFO
+#==============================================
+
+AddLabel(yes, "CD: " + Round(cdNormalized, 1) + "%",
+         if volumeDelta > 0 then Color.GREEN else Color.RED);
+
+AddLabel(yes, "ADX: " + Round(adxValue, 1),
+         if strongTrend then Color.GREEN else Color.GRAY);
+
+AddLabel(yes, "Vol: " + Round(v / avgVolume, 2) + "x",
+         if v > avgVolume * 1.5 then Color.YELLOW else Color.GRAY);
+
+AddLabel(bullishSweep or bearishSweep, "LIQUIDITY SWEEP!", Color.MAGENTA);
+AddLabel(buySignal, "🔵 BUY SIGNAL", Color.WHITE);
+AddLabel(sellSignal, "🔴 SELL SIGNAL", Color.WHITE);

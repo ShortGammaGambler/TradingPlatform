@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Trading Terminal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .terminal-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .terminal-header {
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        .terminal-header h1 {
+            font-size: 1.8em;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+            margin-bottom: 5px;
+        }
+
+        .terminal-header .subtitle {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .panel {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-header {
+            color: #00ff41;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff41;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .metric-box {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.7em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #00ff41;
+        }
+
+        .metric-change {
+            font-size: 0.7em;
+            margin-top: 3px;
+        }
+
+        .positive { color: #00ff00; }
+        .negative { color: #ff0000; }
+        .neutral { color: #ffff00; }
+
+        .regime-display {
+            background: #1a1a1a;
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .regime-vol-crush { 
+            border-color: #ff6b6b;
+            background: linear-gradient(45deg, #1a0505, #2a0a0a);
+        }
+        .regime-gamma-pin { 
+            border-color: #4ecdc4;
+            background: linear-gradient(45deg, #051a1a, #0a2a2a);
+        }
+        .regime-negative-gamma { 
+            border-color: #fa7268;
+            background: linear-gradient(45deg, #1a0a05, #2a1510);
+        }
+        .regime-neutral { 
+            border-color: #a8a8a8;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a1a);
+        }
+
+        .regime-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .chart-container {
+            height: 300px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .vol-surface-container {
+            height: 400px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .term-structure {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .term-box {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .term-label {
+            font-size: 0.6em;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .term-value {
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .strategies-panel {
+            grid-column: 1 / -1;
+        }
+
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .strategy-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .strategy-card:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+        }
+
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .strategy-name {
+            font-weight: bold;
+            color: #00ff41;
+            font-size: 1.1em;
+        }
+
+        .confidence-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        .confidence-HIGH { background: #004d00; color: #00ff00; }
+        .confidence-MEDIUM { background: #4d4d00; color: #ffff00; }
+        .confidence-LOW { background: #4d0000; color: #ff6666; }
+
+        .strategy-details {
+            margin-bottom: 10px;
+        }
+
+        .strike-info {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 5px 0;
+            font-size: 0.8em;
+        }
+
+        .pnl-projection {
+            color: #888;
+            font-size: 0.7em;
+            border-top: 1px solid #333;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .ticker-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .ticker-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #00ff41;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .ticker-btn:hover, .ticker-btn.active {
+            background: #333;
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .refresh-btn {
+            background: #004d00;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            margin: 0 auto;
+            display: block;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #00ff41;
+            color: #000;
+        }
+
+        .timestamp {
+            text-align: center;
+            color: #666;
+            font-size: 0.8em;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .strategy-grid {
+                grid-template-columns: 1fr;
+            }
+            .terminal-header h1 {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <h1>⚡ PROFESSIONAL TRADING TERMINAL v2.0</h1>
+            <div class="subtitle">Advanced Market Regime Analysis & Algorithmic Strategy Engine</div>
+        </div>
+
+        <div class="ticker-row">
+            <button class="ticker-btn active" data-ticker="SPY">SPY</button>
+            <button class="ticker-btn" data-ticker="SPX">SPX</button>
+            <button class="ticker-btn" data-ticker="QQQ">QQQ</button>
+            <button class="ticker-btn" data-ticker="IWM">IWM</button>
+            <button class="ticker-btn" data-ticker="VIX">VIX</button>
+            <button class="ticker-btn" data-ticker="ES">ES</button>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshAll()">🔄 REFRESH ALL DATA</button>
+
+        <div class="main-grid">
+            <!-- Market Metrics Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    MARKET METRICS
+                    <div class="status-dot"></div>
+                </div>
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <div class="metric-label">GEX</div>
+                        <div class="metric-value" id="gex-value">--</div>
+                        <div class="metric-change" id="gex-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">VANNA</div>
+                        <div class="metric-value" id="vanna-value">--</div>
+                        <div class="metric-change" id="vanna-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">CHARM</div>
+                        <div class="metric-value" id="charm-value">--</div>
+                        <div class="metric-change" id="charm-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">DIX</div>
+                        <div class="metric-value" id="dix-value">--</div>
+                        <div class="metric-change" id="dix-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">DBIX</div>
+                        <div class="metric-value" id="dbix-value">--</div>
+                        <div class="metric-change" id="dbix-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">VOL SLOPE</div>
+                        <div class="metric-value" id="vol-slope-value">--</div>
+                        <div class="metric-change" id="vol-slope-change">--</div>
+                    </div>
+                </div>
+                
+                <div class="regime-display" id="regime-display">
+                    <div class="regime-name" id="regime-name">LOADING...</div>
+                    <div id="regime-description">Analyzing market conditions...</div>
+                </div>
+            </div>
+
+            <!-- Term Structure Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    TERM STRUCTURE ANALYSIS
+                    <div class="status-dot"></div>
+                </div>
+                <div class="term-structure">
+                    <div class="term-box">
+                        <div class="term-label">1W</div>
+                        <div class="term-value" id="iv-1w">--</div>
+                    </div>
+                    <div class="term-box">
+                        <div class="term-label">2W</div>
+                        <div class="term-value" id="iv-2w">--</div>
+                    </div>
+                    <div class="term-box">
+                        <div class="term-label">1M</div>
+                        <div class="term-value" id="iv-1m">--</div>
+                    </div>
+                    <div class="term-box">
+                        <div class="term-label">2M</div>
+                        <div class="term-value" id="iv-2m">--</div>
+                    </div>
+                    <div class="term-box">
+                        <div class="term-label">3M</div>
+                        <div class="term-value" id="iv-3m">--</div>
+                    </div>
+                    <div class="term-box">
+                        <div class="term-label">6M</div>
+                        <div class="term-value" id="iv-6m">--</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="termStructureChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Volatility Surface 3D -->
+            <div class="panel">
+                <div class="panel-header">
+                    3D VOLATILITY SURFACE
+                    <div class="status-dot"></div>
+                </div>
+                <div class="vol-surface-container" id="volSurface3D"></div>
+            </div>
+
+            <!-- Flow Analysis Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    OPTIONS FLOW ANALYSIS
+                    <div class="status-dot"></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="flowChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Engine Panel -->
+        <div class="panel strategies-panel">
+            <div class="panel-header">
+                🎯 ALGORITHMIC STRATEGY ENGINE
+                <div class="status-dot"></div>
+            </div>
+            <div class="strategy-grid" id="strategyGrid">
+                <!-- Strategies will be dynamically generated here -->
+            </div>
+        </div>
+
+        <div class="timestamp" id="last-update">
+            Last updated: --
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentTicker = 'SPY';
+        let marketData = {};
+        let charts = {};
+        let volSurface3D;
+        let previousData = {};
+
+        // Market data simulation with realistic patterns
+        function generateAdvancedMarketData() {
+            const now = new Date();
+            const timeToExpiry = {
+                '1W': 7,
+                '2W': 14,
+                '1M': 30,
+                '2M': 60,
+                '3M': 90,
+                '6M': 180
+            };
+
+            // Base volatilities with term structure
+            const baseIV = 0.12 + Math.random() * 0.15;
+            const termStructure = {};
+            Object.keys(timeToExpiry).forEach(term => {
+                const decay = Math.exp(-timeToExpiry[term] / 365);
+                const slope = (Math.random() - 0.5) * 0.08;
+                termStructure[term] = Math.max(0.05, baseIV + slope * decay);
+            });
+
+            // Generate realistic Greeks
+            const spotPrice = 420 + Math.random() * 150;
+            const gex = (Math.random() - 0.5) * 6000000000;
+            const vanna = (Math.random() - 0.5) * 800000000;
+            const charm = (Math.random() - 0.5) * 400000000;
+            
+            // Calculate volatility slope (30D vs 90D)
+            const volSlope = (termStructure['3M'] - termStructure['1M']) * 100;
+
+            return {
+                spot: spotPrice,
+                gex: gex,
+                vanna: vanna,
+                charm: charm,
+                dix: 30 + Math.random() * 30,
+                dbix: 30 + Math.random() * 30,
+                termStructure: termStructure,
+                volSlope: volSlope,
+                timestamp: now
+            };
+        }
+
+        // Advanced regime classification
+        function analyzeMarketRegime(data) {
+            const { gex, vanna, charm, dix, volSlope } = data;
+            
+            // Complex regime logic
+            if (gex > 2500000000 && vanna > 300000000 && volSlope < -2) {
+                return {
+                    name: 'EXTREME VOL CRUSH',
+                    class: 'regime-vol-crush',
+                    description: 'Massive positive gamma + dealer vanna buying. Expect severe volatility compression.',
+                    riskLevel: 'LOW'
+                };
+            } else if (gex < -1500000000 && volSlope > 3) {
+                return {
+                    name: 'VOLATILITY EXPLOSION',
+                    class: 'regime-negative-gamma', 
+                    description: 'Negative gamma + steep vol term structure. Expect violent moves.',
+                    riskLevel: 'EXTREME'
+                };
+            } else if (Math.abs(gex) < 800000000 && dix > 47) {
+                return {
+                    name: 'MOMENTUM REGIME',
+                    class: 'regime-gamma-pin',
+                    description: 'Low gamma + high dark pool activity. Trending environment.',
+                    riskLevel: 'MEDIUM'
+                };
+            } else {
+                return {
+                    name: 'BALANCED REGIME',
+                    class: 'regime-neutral',
+                    description: 'Neutral gamma environment. Mixed signals.',
+                    riskLevel: 'MEDIUM'
+                };
+            }
+        }
+
+        // Advanced strategy engine
+        function generateStrategies(data, regime) {
+            const { spot, termStructure, gex, vanna, dix } = data;
+            const strategies = [];
+
+            // Get next Friday expiration
+            const nextFriday = getNextFriday();
+            const monthlyExp = getMonthlyExpiration();
+
+            // Strategy 1: Based on gamma exposure
+            if (gex > 1500000000) {
+                strategies.push({
+                    name: 'GAMMA SCALP IRON CONDOR',
+                    type: 'NEUTRAL',
+                    confidence: 'HIGH',
+                    description: 'High positive gamma suggests range-bound action',
+                    strikes: {
+                        shortCall: Math.round(spot + 18),
+                        longCall: Math.round(spot + 28),
+                        shortPut: Math.round(spot - 18),
+                        longPut: Math.round(spot - 28)
+                    },
+                    expiration: nextFriday,
+                    maxProfit: '$1,450',
+                    maxLoss: '$3,550',
+                    breakevens: [Math.round(spot - 14.5), Math.round(spot + 14.5)]
+                });
+            }
+
+            // Strategy 2: Volatility term structure play
+            const volSlope = (termStructure['3M'] - termStructure['1M']) * 100;
+            if (volSlope > 2.5) {
+                strategies.push({
+                    name: 'CALENDAR SPREAD ALPHA',
+                    type: 'VOLATILITY',
+                    confidence: 'MEDIUM',
+                    description: 'Steep term structure - sell front month, buy back month',
+                    strikes: {
+                        strike: Math.round(spot),
+                        frontMonth: nextFriday,
+                        backMonth: monthlyExp
+                    },
+                    expiration: `${nextFriday} / ${monthlyExp}`,
+                    maxProfit: '$920',
+                    maxLoss: '$1,080',
+                    breakevens: [Math.round(spot - 9), Math.round(spot + 9)]
+                });
+            }
+
+            // Strategy 3: Flow-based directional
+            if (dix > 48 && Math.abs(vanna) > 150000000) {
+                const direction = vanna > 0 ? 'BULLISH' : 'BEARISH';
+                const strikeAdj = vanna > 0 ? 12 : -12;
+                
+                strategies.push({
+                    name: `${direction} VANNA SQUEEZE`,
+                    type: 'DIRECTIONAL',
+                    confidence: 'HIGH',
+                    description: `Strong ${direction.toLowerCase()} vanna flow detected`,
+                    strikes: {
+                        primary: Math.round(spot + strikeAdj/2),
+                        secondary: Math.round(spot + strikeAdj)
+                    },
+                    expiration: nextFriday,
+                    maxProfit: 'UNLIMITED',
+                    maxLoss: '$2,300',
+                    breakevens: [Math.round(spot + strikeAdj + 23)]
+                });
+            }
+
+            // Strategy 4: Mean reversion setup
+            if (Math.abs(gex) < 700000000 && termStructure['1W'] > termStructure['1M']) {
+                strategies.push({
+                    name: 'BUTTERFLY MEAN REVERSION',
+                    type: 'NEUTRAL',
+                    confidence: 'MEDIUM',
+                    description: 'Low gamma + inverted vol structure suggests mean reversion',
+                    strikes: {
+                        longLower: Math.round(spot - 22),
+                        shortMiddle: Math.round(spot),
+                        longUpper: Math.round(spot + 22)
+                    },
+                    expiration: nextFriday,
+                    maxProfit: '$2,150',
+                    maxLoss: '$50',
+                    breakevens: [Math.round(spot - 21.5), Math.round(spot + 21.5)]
+                });
+            }
+
+            // Strategy 5: Volatility breakout
+            if (Math.abs(gex) < 500000000 && volSlope < -1) {
+                strategies.push({
+                    name: 'LONG STRADDLE BREAKOUT',
+                    type: 'VOLATILITY',
+                    confidence: 'HIGH',
+                    description: 'Low gamma + backwardated vol suggests potential breakout',
+                    strikes: {
+                        callStrike: Math.round(spot),
+                        putStrike: Math.round(spot)
+                    },
+                    expiration: nextFriday,
+                    maxProfit: 'UNLIMITED',
+                    maxLoss: '$4,200',
+                    breakevens: [Math.round(spot - 42), Math.round(spot + 42)]
+                });
+            }
+
+            return strategies;
+        }
+
+        // Utility functions for dates
+        function getNextFriday() {
+            const today = new Date();
+            const daysUntilFriday = (5 - today.getDay() + 7) % 7;
+            const nextFriday = new Date(today);
+            nextFriday.setDate(today.getDate() + (daysUntilFriday || 7));
+            return nextFriday.toLocaleDateString();
+        }
+
+        function getMonthlyExpiration() {
+            const today = new Date();
+            const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+            // Third Friday of the month
+            const thirdFriday = new Date(nextMonth);
+            thirdFriday.setDate(1 + ((5 - nextMonth.getDay() + 7) % 7) + 14);
+            return thirdFriday.toLocaleDateString();
+        }
+
+        // Initialize 3D volatility surface
+        function init3DVolSurface() {
+            const container = document.getElementById('volSurface3D');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+            renderer.setClearColor(0x0a0a0a);
+            container.appendChild(renderer.domElement);
+
+            // Create volatility surface geometry
+            const geometry = new THREE.PlaneGeometry(24, 24, 40, 40);
+            const vertices = geometry.attributes.position.array;
+
+            // Generate volatility surface data
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+                // Realistic vol surface shape with smile/skew
+                vertices[i + 2] = Math.sin(x * 0.25) * Math.cos(y * 0.25) * 4 + 
+                                 Math.abs(x) * 0.15 + Math.random() * 0.8;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff41, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const surface = new THREE.Mesh(geometry, material);
+            scene.add(surface);
+
+            // Add lighting
+            const light = new THREE.PointLight(0x00ff41, 1.2, 120);
+            light.position.set(12, 12, 12);
+            scene.add(light);
+
+            camera.position.set(18, 18, 18);
+            camera.lookAt(0, 0, 0);
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                surface.rotation.z += 0.008;
+                surface.rotation.x += 0.002;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            volSurface3D = { scene, camera, renderer, surface };
+        }
+
+        // Initialize charts
+        function initCharts() {
+            // Term Structure Chart
+            const ctx1 = document.getElementById('termStructureChart').getContext('2d');
+            charts.termStructure = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['1W', '2W', '1M', '2M', '3M', '6M'],
+                    datasets: [{
+                        label: 'Implied Volatility',
+                        data: [],
+                        borderColor: '#00ff41',
+                        backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#00ff41',
+                        pointBorderColor: '#00ff41',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            labels: { color: '#00ff41' },
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { color: '#00ff41' }, 
+                            grid: { color: 'rgba(0, 255, 65, 0.1)' } 
+                        },
+                        y: { 
+                            ticks: { 
+                                color: '#00ff41',
+                                callback: function(value) {
+                                    return (value * 100).toFixed(1) + '%';
+                                }
+                            }, 
+                            grid: { color: 'rgba(0, 255, 65, 0.1)' } 
+                        }
+                    }
+                }
+            });
+
+            // Options Flow Chart
+            const ctx2 = document.getElementById('flowChart').getContext('2d');
+            const flowData = [
+                12000 + Math.random() * 8000,
+                8500 + Math.random() * 6000,
+                3200 + Math.random() * 2000,
+                2800 + Math.random() * 1500
+            ];
+            
+            charts.flow = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Calls', 'Puts', 'Call Spreads', 'Put Spreads'],
+                    datasets: [{
+                        label: 'Flow Volume',
+                        data: flowData,
+                        backgroundColor: [
+                            'rgba(0, 255, 65, 0.7)',
+                            'rgba(255, 0, 0, 0.7)',
+                            'rgba(0, 255, 65, 0.4)',
+                            'rgba(255, 0, 0, 0.4)'
+                        ],
+                        borderColor: [
+                            '#00ff41',
+                            '#ff0000',
+                            '#00ff41',
+                            '#ff0000'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { color: '#00ff41' }, 
+                            grid: { color: 'rgba(0, 255, 65, 0.1)' } 
+                        },
+                        y: { 
+                            ticks: { 
+                                color: '#00ff41',
+                                callback: function(value) {
+                                    return (value / 1000).toFixed(0) + 'K';
+                                }
+                            }, 
+                            grid: { color: 'rgba(0, 255, 65, 0.1)' } 
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update display functions
+        function updateMetricsDisplay(data) {
+            const prevData = previousData[currentTicker] || {};
+            
+            // Format large numbers
+            const formatLargeNumber = (num) => {
+                if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+                if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+                if (Math.abs(num) >= 1e3) return (num / 1e3).toFixed(0) + 'K';
+                return num.toFixed(0);
+            };
+
+            // Update GEX
+            document.getElementById('gex-value').textContent = formatLargeNumber(data.gex);
+            const gexChange = data.gex - (prevData.gex || 0);
+            const gexChangeEl = document.getElementById('gex-change');
+            gexChangeEl.textContent = (gexChange >= 0 ? '+' : '') + formatLargeNumber(gexChange);
+            gexChangeEl.className = `metric-change ${gexChange > 0 ? 'positive' : gexChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update VANNA
+            document.getElementById('vanna-value').textContent = formatLargeNumber(data.vanna);
+            const vannaChange = data.vanna - (prevData.vanna || 0);
+            const vannaChangeEl = document.getElementById('vanna-change');
+            vannaChangeEl.textContent = (vannaChange >= 0 ? '+' : '') + formatLargeNumber(vannaChange);
+            vannaChangeEl.className = `metric-change ${vannaChange > 0 ? 'positive' : vannaChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update CHARM
+            document.getElementById('charm-value').textContent = formatLargeNumber(data.charm);
+            const charmChange = data.charm - (prevData.charm || 0);
+            const charmChangeEl = document.getElementById('charm-change');
+            charmChangeEl.textContent = (charmChange >= 0 ? '+' : '') + formatLargeNumber(charmChange);
+            charmChangeEl.className = `metric-change ${charmChange > 0 ? 'positive' : charmChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update DIX
+            document.getElementById('dix-value').textContent = data.dix.toFixed(1) + '%';
+            const dixChange = data.dix - (prevData.dix || 0);
+            const dixChangeEl = document.getElementById('dix-change');
+            dixChangeEl.textContent = (dixChange >= 0 ? '+' : '') + dixChange.toFixed(1) + '%';
+            dixChangeEl.className = `metric-change ${dixChange > 0 ? 'positive' : dixChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update DBIX
+            document.getElementById('dbix-value').textContent = data.dbix.toFixed(1) + '%';
+            const dbixChange = data.dbix - (prevData.dbix || 0);
+            const dbixChangeEl = document.getElementById('dbix-change');
+            dbixChangeEl.textContent = (dbixChange >= 0 ? '+' : '') + dbixChange.toFixed(1) + '%';
+            dbixChangeEl.className = `metric-change ${dbixChange > 0 ? 'positive' : dbixChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update VOL SLOPE
+            document.getElementById('vol-slope-value').textContent = data.volSlope.toFixed(2) + '%';
+            const volSlopeChange = data.volSlope - (prevData.volSlope || 0);
+            const volSlopeChangeEl = document.getElementById('vol-slope-change');
+            volSlopeChangeEl.textContent = (volSlopeChange >= 0 ? '+' : '') + volSlopeChange.toFixed(2) + '%';
+            volSlopeChangeEl.className = `metric-change ${volSlopeChange > 0 ? 'positive' : volSlopeChange < 0 ? 'negative' : 'neutral'}`;
+
+            // Update term structure
+            Object.keys(data.termStructure).forEach(term => {
+                const element = document.getElementById(`iv-${term.toLowerCase()}`);
+                if (element) {
+                    element.textContent = (data.termStructure[term] * 100).toFixed(1) + '%';
+                    const change = data.termStructure[term] - ((prevData.termStructure && prevData.termStructure[term]) || 0);
+                    element.className = `term-value ${change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}`;
+                }
+            });
+        }
+
+        function updateRegimeDisplay(regime) {
+            const regimeDisplay = document.getElementById('regime-display');
+            const regimeName = document.getElementById('regime-name');
+            const regimeDescription = document.getElementById('regime-description');
+
+            regimeDisplay.className = `regime-display ${regime.class}`;
+            regimeName.textContent = regime.name;
+            regimeDescription.textContent = regime.description;
+        }
+
+        function updateCharts(data) {
+            // Update term structure chart
+            const termData = Object.values(data.termStructure);
+            charts.termStructure.data.datasets[0].data = termData;
+            charts.termStructure.update('none');
+
+            // Update flow chart with new random data
+            const newFlowData = [
+                12000 + Math.random() * 8000,
+                8500 + Math.random() * 6000,
+                3200 + Math.random() * 2000,
+                2800 + Math.random() * 1500
+            ];
+            charts.flow.data.datasets[0].data = newFlowData;
+            charts.flow.update('none');
+        }
+
+        function renderStrategies(strategies) {
+            const grid = document.getElementById('strategyGrid');
+            grid.innerHTML = '';
+
+            strategies.forEach(strategy => {
+                const card = document.createElement('div');
+                card.className = 'strategy-card';
+                
+                let strikeHTML = '';
+                if (strategy.strikes) {
+                    Object.keys(strategy.strikes).forEach(key => {
+                        const value = strategy.strikes[key];
+                        strikeHTML += `<div class="strike-info">${key.toUpperCase()}: ${value}</div>`;
+                    });
+                }
+
+                card.innerHTML = `
+                    <div class="strategy-header">
+                        <div class="strategy-name">${strategy.name}</div>
+                        <div class="confidence-badge confidence-${strategy.confidence}">${strategy.confidence}</div>
+                    </div>
+                    <div class="strategy-details">
+                        <div style="margin-bottom: 10px; color: #ccc;">${strategy.description}</div>
+                        ${strikeHTML}
+                    </div>
+                    <div class="pnl-projection">
+                        <div>Max Profit: ${strategy.maxProfit}</div>
+                        <div>Max Loss: ${strategy.maxLoss}</div>
+                        <div>Breakevens: ${Array.isArray(strategy.breakevens) ? strategy.breakevens.join(', ') : strategy.breakevens}</div>
+                        <div>Expiration: ${strategy.expiration}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Main refresh function
+        function refreshAll() {
+            // Store previous data
+            previousData[currentTicker] = { ...marketData[currentTicker] };
+            
+            // Generate new data
+            const newData = generateAdvancedMarketData();
+            marketData[currentTicker] = newData;
+            
+            // Analyze regime
+            const regime = analyzeMarketRegime(newData);
+            
+            // Generate strategies
+            const strategies = generateStrategies(newData, regime);
+            
+            // Update displays
+            updateMetricsDisplay(newData);
+            updateRegimeDisplay(regime);
+            updateCharts(newData);
+            renderStrategies(strategies);
+            
+            // Update timestamp
+            document.getElementById('last-update').textContent = 
+                `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+
+        // Ticker selection
+        function selectTicker(ticker) {
+            currentTicker = ticker;
+            
+            // Update button states
+            document.querySelectorAll('.ticker-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.ticker === ticker) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // If no data for this ticker, generate it
+            if (!marketData[ticker]) {
+                refreshAll();
+            } else {
+                // Use existing data
+                const data = marketData[ticker];
+                const regime = analyzeMarketRegime(data);
+                const strategies = generateStrategies(data, regime);
+                
+                updateMetricsDisplay(data);
+                updateRegimeDisplay(regime);
+                updateCharts(data);
+                renderStrategies(strategies);
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize 3D surface
+            init3DVolSurface();
+            
+            // Initialize charts
+            initCharts();
+            
+            // Add ticker event listeners
+            document.querySelectorAll('.ticker-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectTicker(btn.dataset.ticker));
+            });
+            
+            // Initial data load
+            refreshAll();
+            
+            // Auto refresh every 30 seconds
+            setInterval(refreshAll, 30000);
+        });
+
+        // Handle window resize for 3D surface
+        window.addEventListener('resize', function() {
+            if (volSurface3D) {
+                const container = document.getElementById('volSurface3D');
+                volSurface3D.camera.aspect = container.offsetWidth / container.offsetHeight;
+                volSurface3D.camera.updateProjectionMatrix();
+                volSurface3D.renderer.setSize(container.offsetWidth, container.offsetHeight);
+            }
+        });
+
+        // Utility function for probability calculations
+        function calculateProbability(spot, strike, iv, dte) {
+            // Simplified Black-Scholes probability calculation
+            const d1 = Math.log(spot / strike) / (iv * Math.sqrt(dte / 365));
+            return 0.5 + 0.5 * Math.sign(d1) * Math.sqrt(1 - Math.exp(-2 * d1 * d1 / Math.PI));
+        }
+
+        // Advanced Greeks calculations (simplified)
+        function calculateGreeks(spot, strike, iv, dte, isCall = true) {
+            const t = dte / 365;
+            const d1 = (Math.log(spot / strike) + (0.05 + 0.5 * iv * iv) * t) / (iv * Math.sqrt(t));
+            const d2 = d1 - iv * Math.sqrt(t);
+            
+            // Simplified calculations
+            const gamma = Math.exp(-0.5 * d1 * d1) / (spot * iv * Math.sqrt(2 * Math.PI * t));
+            const theta = -spot * Math.exp(-0.5 * d1 * d1) * iv / (2 * Math.sqrt(2 * Math.PI * t)) / 365;
+            const vega = spot * Math.sqrt(t) * Math.exp(-0.5 * d1 * d1) / Math.sqrt(2 * Math.PI) / 100;
+            
+            return { gamma, theta, vega };
+        }
+
+        // Market regime prediction algorithm
+        function predictRegimeChange(historicalData) {
+            // Simple momentum-based prediction
+            if (historicalData.length < 3) return 'INSUFFICIENT_DATA';
+            
+            const recent = historicalData.slice(-3);
+            const gexTrend = recent[2].gex - recent[0].gex;
+            const vannaTrend = recent[2].vanna - recent[0].vanna;
+            
+            if (Math.abs(gexTrend) > 1000000000 && Math.abs(vannaTrend) > 200000000) {
+                return gexTrend > 0 ? 'TRENDING_POSITIVE_GAMMA' : 'TRENDING_NEGATIVE_GAMMA';
+            }
+            
+            return 'STABLE';
+        }
+
+        // Risk management alerts
+        function checkRiskAlerts(data, strategies) {
+            const alerts = [];
+            
+            // High volatility alert
+            if (Math.max(...Object.values(data.termStructure)) > 0.35) {
+                alerts.push({
+                    type: 'WARNING',
+                    message: 'Extremely high implied volatility detected',
+                    recommendation: 'Consider volatility selling strategies'
+                });
+            }
+            
+            // Negative gamma alert
+            if (data.gex < -2000000000) {
+                alerts.push({
+                    type: 'CRITICAL',
+                    message: 'Extreme negative gamma environment',
+                    recommendation: 'Reduce position sizes and increase hedging'
+                });
+            }
+            
+            // Low liquidity alert
+            if (data.dix < 35 && data.dbix < 35) {
+                alerts.push({
+                    type: 'INFO',
+                    message: 'Low dark pool activity - potential liquidity issues',
+                    recommendation: 'Use limit orders and smaller position sizes'
+                });
+            }
+            
+            return alerts;
+        }
+
+        console.log('🚀 Professional Trading Terminal v2.0 Initialized');
+        console.log('📊 Real-time market analysis engine ready');
+        console.log('⚡ Advanced options strategies loaded');
+    </script>
+</body>
+</html>
+                

@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Professional Trading Terminal v4.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            background: #080a0e;
+            color: #c0c8d4;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .terminal-container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .terminal-header {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 14px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-header h1 {
+            font-size: 1.4em;
+            color: #58a6ff;
+            letter-spacing: 1px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-right .clock {
+            color: #8b949e;
+            font-size: 0.85em;
+        }
+
+        .live-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #3fb950;
+            box-shadow: 0 0 6px #3fb950;
+            animation: livePulse 2s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 6px #3fb950; }
+            50% { opacity: 0.4; box-shadow: 0 0 2px #3fb950; }
+        }
+
+        /* ===== DATA SOURCE SETTINGS BAR ===== */
+        .settings-bar {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .settings-bar label {
+            color: #8b949e;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-bar input[type="text"] {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #c9d1d9;
+            padding: 5px 10px;
+            font-family: inherit;
+            font-size: 0.8em;
+            width: 220px;
+        }
+        .settings-bar input[type="text"]:focus { border-color: #58a6ff; outline: none; }
+
+        .settings-bar button {
+            background: #238636;
+            border: 1px solid #2ea043;
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75em;
+        }
+        .settings-bar button:hover { background: #2ea043; }
+
+        .source-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid;
+        }
+
+        .source-indicator .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            animation: livePulse 2s infinite;
+        }
+
+        .source-demo { border-color: #d29922; color: #d29922; }
+        .source-demo .dot { background: #d29922; box-shadow: 0 0 6px #d29922; }
+
+        .source-live { border-color: #3fb950; color: #3fb950; }
+        .source-live .dot { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+
+        .source-hybrid { border-color: #58a6ff; color: #58a6ff; }
+        .source-hybrid .dot { background: #58a6ff; box-shadow: 0 0 6px #58a6ff; }
+
+        .backend-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7em;
+            color: #8b949e;
+        }
+
+        .backend-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #484f58;
+        }
+        .backend-dot.online { background: #3fb950; box-shadow: 0 0 4px #3fb950; }
+        .backend-dot.offline { background: #f85149; }
+
+        .ticker-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ticker-btn {
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+
+        .ticker-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+        .ticker-btn.active {
+            background: #0d419d;
+            border-color: #58a6ff;
+            color: #fff;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .refresh-btn {
+            background: #238636;
+            border: 1px solid #2ea043;
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: #2ea043; }
+
+        .spot-display {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #58a6ff;
+            padding: 4px 12px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+        }
+
+        .spot-source-tag {
+            font-size: 0.6em;
+            font-weight: normal;
+            color: #8b949e;
+            margin-left: 6px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .panel {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .panel-header {
+            color: #58a6ff;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-header .live-dot { width: 6px; height: 6px; }
+
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .metric-box {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.65em;
+            color: #8b949e;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1em;
+            font-weight: bold;
+            color: #c9d1d9;
+        }
+
+        .metric-change {
+            font-size: 0.65em;
+            margin-top: 2px;
+        }
+
+        .positive { color: #3fb950; }
+        .negative { color: #f85149; }
+        .neutral { color: #d29922; }
+
+        .regime-display {
+            background: #161b22;
+            border: 2px solid;
+            border-radius: 6px;
+            padding: 14px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .regime-vol-crush { border-color: #f85149; background: linear-gradient(135deg, #1a0505, #200a0a); }
+        .regime-gamma-pin { border-color: #3fb950; background: linear-gradient(135deg, #051a0a, #0a200f); }
+        .regime-negative-gamma { border-color: #f0883e; background: linear-gradient(135deg, #1a0f05, #201508); }
+        .regime-neutral { border-color: #8b949e; background: linear-gradient(135deg, #10131a, #161b22); }
+        .regime-dealer-hedging { border-color: #a371f7; background: linear-gradient(135deg, #15051a, #1b0a20); }
+        .regime-opex-pinning { border-color: #79c0ff; background: linear-gradient(135deg, #051520, #081b2a); }
+        .regime-tail-risk { border-color: #ff7b72; background: linear-gradient(135deg, #200505, #2a0808); }
+        .regime-trend-following { border-color: #56d364; background: linear-gradient(135deg, #052005, #083008); }
+
+        .regime-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+
+        .regime-description { font-size: 0.75em; color: #8b949e; }
+
+        .regime-meta {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 0.7em;
+        }
+
+        .regime-meta span { color: #8b949e; }
+        .regime-meta .risk-label { font-weight: bold; }
+
+        .chart-container {
+            height: 260px;
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .vol-surface-container {
+            height: 380px;
+            background: #080a0e;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            position: relative;
+            cursor: grab;
+            touch-action: none;
+        }
+        .vol-surface-container:active { cursor: grabbing; }
+
+        .vol-surface-container .axis-label {
+            position: absolute;
+            font-size: 0.65em;
+            color: #8b949e;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .vol-surface-container .axis-x { bottom: 8px; left: 50%; transform: translateX(-50%); }
+        .vol-surface-container .axis-y { left: 8px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+        .vol-surface-container .axis-z { top: 8px; right: 12px; }
+
+        .term-structure-boxes {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .term-box {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .term-label { font-size: 0.6em; color: #8b949e; }
+        .term-value { font-size: 0.8em; font-weight: bold; }
+
+        .full-width { grid-column: 1 / -1; }
+
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 10px;
+        }
+
+        .strategy-card {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            padding: 12px;
+            transition: border-color 0.2s;
+        }
+        .strategy-card:hover { border-color: #58a6ff; }
+
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .strategy-name {
+            font-weight: bold;
+            color: #58a6ff;
+            font-size: 0.95em;
+        }
+
+        .confidence-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65em;
+            font-weight: bold;
+        }
+
+        .confidence-HIGH { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
+        .confidence-MEDIUM { background: #2a1f04; color: #d29922; border: 1px solid #9e6a03; }
+        .confidence-LOW { background: #2d0a0a; color: #f85149; border: 1px solid #da3633; }
+
+        .strategy-desc {
+            color: #8b949e;
+            font-size: 0.78em;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .strike-info {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            padding: 5px 8px;
+            margin: 3px 0;
+            font-size: 0.75em;
+            color: #c9d1d9;
+        }
+
+        .greeks-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin: 8px 0;
+        }
+
+        .greek-box {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .greek-label { font-size: 0.6em; color: #8b949e; }
+        .greek-value { font-size: 0.75em; font-weight: bold; color: #c9d1d9; }
+
+        .payoff-canvas {
+            width: 100%;
+            height: 60px;
+            margin: 6px 0;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            background: #0d1117;
+        }
+
+        .pnl-projection {
+            color: #8b949e;
+            font-size: 0.7em;
+            border-top: 1px solid #21262d;
+            padding-top: 6px;
+            margin-top: 6px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+        }
+
+        .pnl-projection .proj-label { color: #8b949e; }
+        .pnl-projection .proj-profit { color: #3fb950; }
+        .pnl-projection .proj-loss { color: #f85149; }
+
+        .alerts-panel {
+            margin-top: 10px;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 0.78em;
+            line-height: 1.3;
+        }
+
+        .alert-CRITICAL {
+            background: #2d0a0a;
+            border: 1px solid #da3633;
+            color: #f85149;
+        }
+        .alert-WARNING {
+            background: #2a1f04;
+            border: 1px solid #9e6a03;
+            color: #d29922;
+        }
+        .alert-INFO {
+            background: #0a1929;
+            border: 1px solid #1f6feb;
+            color: #58a6ff;
+        }
+
+        .alert-badge {
+            font-weight: bold;
+            font-size: 0.7em;
+            padding: 1px 5px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+        .alert-CRITICAL .alert-badge { background: #da3633; color: #fff; }
+        .alert-WARNING .alert-badge { background: #9e6a03; color: #fff; }
+        .alert-INFO .alert-badge { background: #1f6feb; color: #fff; }
+
+        .alert-body { flex: 1; }
+        .alert-recommendation { color: #8b949e; font-size: 0.9em; margin-top: 2px; }
+
+        .secondary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .timestamp {
+            text-align: center;
+            color: #484f58;
+            font-size: 0.7em;
+            margin-top: 10px;
+            padding: 6px;
+        }
+
+        .bs-calc-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .bs-input {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            color: #c9d1d9;
+            padding: 5px 6px;
+            font-family: inherit;
+            font-size: 0.75em;
+            text-align: center;
+        }
+        .bs-input:focus { border-color: #58a6ff; outline: none; }
+
+        .bs-result-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+        }
+
+        .bs-result-box {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 3px;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .bs-label { font-size: 0.6em; color: #8b949e; }
+        .bs-val { font-size: 0.8em; font-weight: bold; color: #c9d1d9; }
+
+        /* ===== RESPONSIVE: 1200px ===== */
+        @media (max-width: 1200px) {
+            .main-grid, .secondary-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===== RESPONSIVE: 768px ===== */
+        @media (max-width: 768px) {
+            .terminal-header {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+            .terminal-header h1 { font-size: 1.1em; }
+
+            .settings-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .settings-bar input[type="text"] { width: 100%; }
+            .settings-bar .settings-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .ticker-btn {
+                padding: 8px 16px;
+                font-size: 0.85em;
+            }
+
+            .strategy-grid { grid-template-columns: 1fr; }
+            .metrics-row { grid-template-columns: repeat(2, 1fr); }
+            .term-structure-boxes { grid-template-columns: repeat(3, 1fr); }
+
+            .chart-container { height: 200px; }
+            .vol-surface-container { height: 300px; }
+
+            .bs-calc-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .bs-result-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .regime-meta {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+
+        /* ===== RESPONSIVE: 480px ===== */
+        @media (max-width: 480px) {
+            .terminal-container { padding: 6px; }
+            .terminal-header { padding: 10px 14px; }
+            .terminal-header h1 { font-size: 0.95em; }
+
+            .metrics-row { grid-template-columns: 1fr; }
+            .term-structure-boxes { grid-template-columns: repeat(3, 1fr); }
+
+            .chart-container { height: 160px; }
+            .vol-surface-container { height: 250px; }
+
+            .bs-calc-row { grid-template-columns: 1fr; }
+            .bs-result-row { grid-template-columns: repeat(2, 1fr); }
+
+            .strategy-grid { grid-template-columns: 1fr; }
+
+            .ticker-btn {
+                padding: 10px 12px;
+                font-size: 0.8em;
+            }
+
+            .pnl-projection { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <h1>DERIVATIVES TRADING TERMINAL v4.0</h1>
+            <div class="header-right">
+                <div class="clock" id="clock">--:--:--</div>
+                <div class="live-dot"></div>
+            </div>
+        </div>
+
+        <!-- Data Source Settings Bar -->
+        <div class="settings-bar">
+            <div class="settings-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <label>Polygon.io API Key:</label>
+                <input type="text" id="polygon-api-key" placeholder="Enter API key for live data..." autocomplete="off">
+                <button onclick="saveApiKey()">SAVE</button>
+                <button onclick="clearApiKey()" style="background:#da3633;border-color:#f85149;">CLEAR</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div class="source-indicator source-demo" id="source-indicator">
+                    <div class="dot"></div>
+                    <span id="source-label">DEMO MODE</span>
+                </div>
+                <div class="backend-status">
+                    <div class="backend-dot" id="backend-dot"></div>
+                    <span id="backend-label">Backend: offline</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ticker-row">
+            <button class="ticker-btn active" data-ticker="SPY">SPY</button>
+            <button class="ticker-btn" data-ticker="SPX">SPX</button>
+            <button class="ticker-btn" data-ticker="QQQ">QQQ</button>
+            <button class="ticker-btn" data-ticker="IWM">IWM</button>
+            <button class="ticker-btn" data-ticker="VIX">VIX</button>
+            <button class="ticker-btn" data-ticker="ES">ES</button>
+        </div>
+
+        <div class="controls-row">
+            <div class="spot-display" id="spot-display">SPY: ---</div>
+            <button class="refresh-btn" onclick="refreshAll()">REFRESH</button>
+        </div>
+
+        <div class="main-grid">
+            <!-- Market Metrics + Regime Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    Market Metrics
+                    <div class="live-dot"></div>
+                </div>
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <div class="metric-label">GEX</div>
+                        <div class="metric-value" id="gex-value">--</div>
+                        <div class="metric-change" id="gex-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Vanna Exp</div>
+                        <div class="metric-value" id="vanna-value">--</div>
+                        <div class="metric-change" id="vanna-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Charm Exp</div>
+                        <div class="metric-value" id="charm-value">--</div>
+                        <div class="metric-change" id="charm-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">DIX</div>
+                        <div class="metric-value" id="dix-value">--</div>
+                        <div class="metric-change" id="dix-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">P/C Ratio</div>
+                        <div class="metric-value" id="pcr-value">--</div>
+                        <div class="metric-change" id="pcr-change">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Vol Slope</div>
+                        <div class="metric-value" id="vol-slope-value">--</div>
+                        <div class="metric-change" id="vol-slope-change">--</div>
+                    </div>
+                </div>
+
+                <div class="regime-display" id="regime-display">
+                    <div class="regime-name" id="regime-name">INITIALIZING</div>
+                    <div class="regime-description" id="regime-description">Analyzing market conditions...</div>
+                    <div class="regime-meta">
+                        <span>Risk: <span class="risk-label" id="regime-risk">--</span></span>
+                        <span>Prediction: <span id="regime-prediction">--</span></span>
+                        <span>Confidence: <span id="regime-confidence">--</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Term Structure Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    IV Term Structure
+                    <div class="live-dot"></div>
+                </div>
+                <div class="term-structure-boxes">
+                    <div class="term-box"><div class="term-label">1W</div><div class="term-value" id="iv-1w">--</div></div>
+                    <div class="term-box"><div class="term-label">2W</div><div class="term-value" id="iv-2w">--</div></div>
+                    <div class="term-box"><div class="term-label">1M</div><div class="term-value" id="iv-1m">--</div></div>
+                    <div class="term-box"><div class="term-label">2M</div><div class="term-value" id="iv-2m">--</div></div>
+                    <div class="term-box"><div class="term-label">3M</div><div class="term-value" id="iv-3m">--</div></div>
+                    <div class="term-box"><div class="term-label">6M</div><div class="term-value" id="iv-6m">--</div></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="termStructureChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 3D Volatility Surface -->
+            <div class="panel">
+                <div class="panel-header">
+                    3D Implied Volatility Surface
+                    <div class="live-dot"></div>
+                </div>
+                <div class="vol-surface-container" id="volSurface3D">
+                    <div class="axis-label axis-x">Strike (Moneyness)</div>
+                    <div class="axis-label axis-y">Days to Expiry</div>
+                    <div class="axis-label axis-z">IV</div>
+                </div>
+            </div>
+
+            <!-- Options Flow Analysis -->
+            <div class="panel">
+                <div class="panel-header">
+                    Options Flow Analysis
+                    <div class="live-dot"></div>
+                </div>
+                <div class="chart-container" style="height:130px;">
+                    <canvas id="flowChart"></canvas>
+                </div>
+                <div class="chart-container" style="height:120px; margin-top:6px;">
+                    <canvas id="pcrChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary row: GEX Profile + Skew Chart -->
+        <div class="secondary-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    GEX Profile by Strike
+                    <div class="live-dot"></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="gexProfileChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    Volatility Skew (25-Delta)
+                    <div class="live-dot"></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="skewChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Black-Scholes Calculator -->
+        <div class="panel" style="margin-bottom:10px;">
+            <div class="panel-header">
+                Black-Scholes Calculator
+                <div class="live-dot"></div>
+            </div>
+            <div class="bs-calc-row">
+                <input type="number" class="bs-input" id="bs-spot" placeholder="Spot" step="0.01">
+                <input type="number" class="bs-input" id="bs-strike" placeholder="Strike" step="0.01">
+                <input type="number" class="bs-input" id="bs-iv" placeholder="IV (%)" step="0.1">
+                <input type="number" class="bs-input" id="bs-dte" placeholder="DTE" step="1">
+                <button class="refresh-btn" onclick="runBSCalculator()" style="font-size:0.75em; padding:5px 10px;">CALCULATE</button>
+            </div>
+            <div class="bs-result-row">
+                <div class="bs-result-box"><div class="bs-label">Call Price</div><div class="bs-val" id="bs-call">--</div></div>
+                <div class="bs-result-box"><div class="bs-label">Put Price</div><div class="bs-val" id="bs-put">--</div></div>
+                <div class="bs-result-box"><div class="bs-label">Delta</div><div class="bs-val" id="bs-delta">--</div></div>
+                <div class="bs-result-box"><div class="bs-label">Gamma</div><div class="bs-val" id="bs-gamma">--</div></div>
+                <div class="bs-result-box"><div class="bs-label">Theta</div><div class="bs-val" id="bs-theta">--</div></div>
+                <div class="bs-result-box"><div class="bs-label">Vega</div><div class="bs-val" id="bs-vega">--</div></div>
+            </div>
+        </div>
+
+        <!-- Risk Alerts -->
+        <div class="panel alerts-panel" style="margin-bottom:10px;">
+            <div class="panel-header">
+                Risk Alerts
+                <div class="live-dot"></div>
+            </div>
+            <div id="alerts-container">
+                <div class="alert-item alert-INFO">
+                    <div class="alert-badge">INFO</div>
+                    <div class="alert-body">Awaiting data...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Engine Panel -->
+        <div class="panel full-width" style="margin-bottom: 10px;">
+            <div class="panel-header">
+                Algorithmic Strategy Engine
+                <div class="live-dot"></div>
+            </div>
+            <div class="strategy-grid" id="strategyGrid"></div>
+        </div>
+
+        <div class="timestamp" id="last-update">Last updated: --</div>
+    </div>
+
+    <script>
+    // =========================================================================
+    // DATA SOURCE CONFIGURATION
+    // =========================================================================
+    const DATA_SOURCE = {
+        mode: 'demo',           // 'demo', 'polygon', 'hybrid'
+        polygonKey: '',
+        backendOnline: false,
+        backendUrl: 'http://localhost:5000',
+        lastPolygonCall: 0,
+        polygonInterval: 12000,  // 12 seconds (free tier: 5 req/min)
+        polygonCache: {},        // cache responses to reduce API calls
+    };
+
+    // Ticker mapping for Polygon.io
+    const POLYGON_TICKER_MAP = {
+        SPY: 'SPY',
+        SPX: 'SPY',    // SPX not directly available, use SPY as proxy
+        QQQ: 'QQQ',
+        IWM: 'IWM',
+        VIX: 'VIX',    // Polygon has VIX as an index
+        ES: 'SPY'       // ES futures -> use SPY as proxy
+    };
+
+    // =========================================================================
+    // GLOBAL STATE
+    // =========================================================================
+    let currentTicker = 'SPY';
+    let marketState = {};
+    let previousData = {};
+    let charts = {};
+    let volSurface3D = null;
+    let historicalTermStructures = {};
+    let historicalPCR = {};
+
+    // Ticker base configuration
+    const TICKER_CONFIG = {
+        SPY: { baseSpot: 585, baseIV: 0.14, drift: 0.0002, volOfVol: 0.02 },
+        SPX: { baseSpot: 5850, baseIV: 0.14, drift: 0.0002, volOfVol: 0.02 },
+        QQQ: { baseSpot: 505, baseIV: 0.18, drift: 0.0003, volOfVol: 0.025 },
+        IWM: { baseSpot: 225, baseIV: 0.20, drift: 0.0001, volOfVol: 0.03 },
+        VIX: { baseSpot: 16.5, baseIV: 0.80, drift: -0.0005, volOfVol: 0.08 },
+        ES:  { baseSpot: 5855, baseIV: 0.14, drift: 0.0002, volOfVol: 0.02 }
+    };
+
+    // =========================================================================
+    // API KEY MANAGEMENT (localStorage)
+    // =========================================================================
+    function loadApiKey() {
+        const saved = localStorage.getItem('polygon_api_key');
+        if (saved) {
+            DATA_SOURCE.polygonKey = saved;
+            document.getElementById('polygon-api-key').value = saved;
+            DATA_SOURCE.mode = 'polygon';
+            updateSourceIndicator();
+        }
+    }
+
+    function saveApiKey() {
+        const key = document.getElementById('polygon-api-key').value.trim();
+        if (key) {
+            DATA_SOURCE.polygonKey = key;
+            localStorage.setItem('polygon_api_key', key);
+            DATA_SOURCE.mode = DATA_SOURCE.backendOnline ? 'hybrid' : 'polygon';
+            updateSourceIndicator();
+            refreshAll();
+        }
+    }
+
+    function clearApiKey() {
+        DATA_SOURCE.polygonKey = '';
+        localStorage.removeItem('polygon_api_key');
+        document.getElementById('polygon-api-key').value = '';
+        DATA_SOURCE.mode = DATA_SOURCE.backendOnline ? 'hybrid' : 'demo';
+        updateSourceIndicator();
+    }
+
+    function updateSourceIndicator() {
+        const indicator = document.getElementById('source-indicator');
+        const label = document.getElementById('source-label');
+        indicator.className = 'source-indicator';
+
+        if (DATA_SOURCE.mode === 'hybrid') {
+            indicator.classList.add('source-hybrid');
+            label.textContent = 'HYBRID MODE (Live + Backend)';
+        } else if (DATA_SOURCE.mode === 'polygon') {
+            indicator.classList.add('source-live');
+            label.textContent = 'LIVE MODE (Polygon.io)';
+        } else {
+            indicator.classList.add('source-demo');
+            label.textContent = 'DEMO MODE';
+        }
+    }
+
+    // =========================================================================
+    // BACKEND HEALTH CHECK
+    // =========================================================================
+    async function checkBackendHealth() {
+        try {
+            const resp = await fetch(DATA_SOURCE.backendUrl + '/api/health', {
+                signal: AbortSignal.timeout(3000)
+            });
+            if (resp.ok) {
+                DATA_SOURCE.backendOnline = true;
+                document.getElementById('backend-dot').className = 'backend-dot online';
+                document.getElementById('backend-label').textContent = 'Backend: online';
+                if (DATA_SOURCE.polygonKey) {
+                    DATA_SOURCE.mode = 'hybrid';
+                }
+                updateSourceIndicator();
+                return true;
+            }
+        } catch (e) {
+            // silently fail
+        }
+        DATA_SOURCE.backendOnline = false;
+        document.getElementById('backend-dot').className = 'backend-dot offline';
+        document.getElementById('backend-label').textContent = 'Backend: offline';
+        if (DATA_SOURCE.mode === 'hybrid') {
+            DATA_SOURCE.mode = DATA_SOURCE.polygonKey ? 'polygon' : 'demo';
+            updateSourceIndicator();
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // POLYGON.IO API INTEGRATION
+    // =========================================================================
+    async function fetchPolygonSnapshot(ticker) {
+        if (!DATA_SOURCE.polygonKey) return null;
+
+        const now = Date.now();
+        const cacheKey = ticker;
+
+        // Rate limiting: 12-second interval between calls
+        if (now - DATA_SOURCE.lastPolygonCall < DATA_SOURCE.polygonInterval) {
+            // Return cached data if available
+            if (DATA_SOURCE.polygonCache[cacheKey]) {
+                return DATA_SOURCE.polygonCache[cacheKey];
+            }
+            return null;
+        }
+
+        const polygonTicker = POLYGON_TICKER_MAP[ticker] || ticker;
+
+        try {
+            // Use previous day endpoint (more reliable on free tier)
+            const url = `https://api.polygon.io/v2/aggs/ticker/${polygonTicker}/prev?adjusted=true&apiKey=${DATA_SOURCE.polygonKey}`;
+            DATA_SOURCE.lastPolygonCall = now;
+
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                if (resp.status === 403 || resp.status === 401) {
+                    console.warn('Polygon.io: Invalid API key or unauthorized');
+                    return null;
+                }
+                return null;
+            }
+
+            const data = await resp.json();
+            if (data.results && data.results.length > 0) {
+                const bar = data.results[0];
+                const result = {
+                    price: bar.c,           // close price
+                    open: bar.o,
+                    high: bar.h,
+                    low: bar.l,
+                    volume: bar.v,
+                    vwap: bar.vw,
+                    change: ((bar.c - bar.o) / bar.o) * 100,
+                    timestamp: bar.t,
+                    source: 'polygon'
+                };
+
+                // Scale for SPX/ES if using SPY as proxy
+                if (ticker === 'SPX') {
+                    result.price *= 10;
+                    result.open *= 10;
+                    result.high *= 10;
+                    result.low *= 10;
+                } else if (ticker === 'ES') {
+                    result.price *= 10.01; // slight offset for ES vs SPX
+                    result.open *= 10.01;
+                    result.high *= 10.01;
+                    result.low *= 10.01;
+                }
+
+                DATA_SOURCE.polygonCache[cacheKey] = result;
+                return result;
+            }
+        } catch (e) {
+            console.warn('Polygon.io fetch error:', e.message);
+        }
+        return null;
+    }
+
+    // =========================================================================
+    // BACKEND DATA FETCH
+    // =========================================================================
+    async function fetchBackendQuote(ticker) {
+        if (!DATA_SOURCE.backendOnline) return null;
+        try {
+            const resp = await fetch(`${DATA_SOURCE.backendUrl}/api/quote/${ticker}`, {
+                signal: AbortSignal.timeout(5000)
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) { /* silent */ }
+        return null;
+    }
+
+    async function fetchBackendOptions(ticker) {
+        if (!DATA_SOURCE.backendOnline) return null;
+        try {
+            const resp = await fetch(`${DATA_SOURCE.backendUrl}/api/options/${ticker}`, {
+                signal: AbortSignal.timeout(8000)
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) { /* silent */ }
+        return null;
+    }
+
+    async function fetchBackendIVSurface(ticker) {
+        if (!DATA_SOURCE.backendOnline) return null;
+        try {
+            const resp = await fetch(`${DATA_SOURCE.backendUrl}/api/iv-surface/${ticker}`, {
+                signal: AbortSignal.timeout(8000)
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) { /* silent */ }
+        return null;
+    }
+
+    async function fetchBackendTermStructure(ticker) {
+        if (!DATA_SOURCE.backendOnline) return null;
+        try {
+            const resp = await fetch(`${DATA_SOURCE.backendUrl}/api/term-structure/${ticker}`, {
+                signal: AbortSignal.timeout(8000)
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) { /* silent */ }
+        return null;
+    }
+
+    // =========================================================================
+    // MATH UTILITIES
+    // =========================================================================
+    function normCDF(x) {
+        const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+        const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+        const sign = x < 0 ? -1 : 1;
+        x = Math.abs(x) / Math.SQRT2;
+        const t = 1.0 / (1.0 + p * x);
+        const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        return 0.5 * (1.0 + sign * y);
+    }
+
+    function normPDF(x) {
+        return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+    }
+
+    function randn() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    // =========================================================================
+    // BLACK-SCHOLES PRICING AND GREEKS
+    // =========================================================================
+    function blackScholes(S, K, T, r, sigma, isCall) {
+        if (T <= 0 || sigma <= 0) return { price: Math.max(0, isCall ? S - K : K - S), delta: isCall ? (S > K ? 1 : 0) : (S < K ? -1 : 0), gamma: 0, theta: 0, vega: 0, rho: 0 };
+        const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+        const d2 = d1 - sigma * Math.sqrt(T);
+        const Nd1 = normCDF(d1);
+        const Nd2 = normCDF(d2);
+        const nd1 = normPDF(d1);
+
+        let price, delta;
+        if (isCall) {
+            price = S * Nd1 - K * Math.exp(-r * T) * Nd2;
+            delta = Nd1;
+        } else {
+            price = K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
+            delta = Nd1 - 1;
+        }
+
+        const gamma = nd1 / (S * sigma * Math.sqrt(T));
+        const theta = (-(S * nd1 * sigma) / (2 * Math.sqrt(T)) - r * K * Math.exp(-r * T) * (isCall ? Nd2 : -normCDF(-d2))) / 365;
+        const vega = S * Math.sqrt(T) * nd1 / 100;
+        const rho = (isCall ? K * T * Math.exp(-r * T) * Nd2 : -K * T * Math.exp(-r * T) * normCDF(-d2)) / 100;
+
+        return { price, delta, gamma, theta, vega, rho, d1, d2 };
+    }
+
+    function calculateProbability(spot, strike, iv, dte) {
+        const T = dte / 365;
+        if (T <= 0) return spot >= strike ? 1.0 : 0.0;
+        const d2 = (Math.log(spot / strike) + (-0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
+        return normCDF(d2);
+    }
+
+    // =========================================================================
+    // CORRELATED MARKET DATA GENERATION (Geometric Brownian Motion)
+    // =========================================================================
+    function initTickerState(ticker) {
+        const cfg = TICKER_CONFIG[ticker];
+        return {
+            spot: cfg.baseSpot,
+            baseIV: cfg.baseIV,
+            ivLevel: cfg.baseIV,
+            gex: (Math.random() - 0.3) * 4e9,
+            vanna: (Math.random() - 0.5) * 5e8,
+            charm: (Math.random() - 0.5) * 3e8,
+            dix: 40 + Math.random() * 12,
+            pcr: 0.7 + Math.random() * 0.6,
+            skewSlope: -0.08 + Math.random() * 0.04,
+            termSlope: 0.01 + Math.random() * 0.03,
+            tick: 0
+        };
+    }
+
+    function evolveMarketState(ticker) {
+        if (!marketState[ticker]) {
+            marketState[ticker] = initTickerState(ticker);
+        }
+        const st = marketState[ticker];
+        const cfg = TICKER_CONFIG[ticker];
+        st.tick++;
+
+        const z_spot = randn();
+        const z_vol = -0.6 * z_spot + 0.8 * randn();
+        const z_gex = 0.3 * z_spot + 0.95 * randn();
+
+        const spotReturn = cfg.drift + 0.01 * z_spot;
+        st.spot = st.spot * (1 + spotReturn);
+        st.spot = Math.max(st.spot * 0.5, Math.min(st.spot * 2, st.spot));
+
+        const ivMeanRev = 0.05;
+        st.ivLevel = st.ivLevel + ivMeanRev * (cfg.baseIV - st.ivLevel) + cfg.volOfVol * z_vol;
+        st.ivLevel = Math.max(0.05, Math.min(0.90, st.ivLevel));
+
+        st.gex = st.gex * 0.92 + z_gex * 8e8 + (spotReturn > 0 ? 2e8 : -2e8);
+        st.gex = Math.max(-6e9, Math.min(6e9, st.gex));
+
+        st.vanna = st.vanna * 0.88 + z_vol * 3e8;
+        st.vanna = Math.max(-2e9, Math.min(2e9, st.vanna));
+
+        st.charm = st.charm * 0.95 + randn() * 5e7;
+
+        st.dix = st.dix + 0.1 * (45 - st.dix) + randn() * 1.5;
+        st.dix = Math.max(25, Math.min(60, st.dix));
+
+        st.pcr = st.pcr + 0.05 * (0.95 - st.pcr) + randn() * 0.05;
+        st.pcr = Math.max(0.4, Math.min(2.0, st.pcr));
+
+        st.skewSlope = st.skewSlope + 0.02 * (-0.06 - st.skewSlope) + randn() * 0.005;
+        st.skewSlope = Math.max(-0.20, Math.min(0.02, st.skewSlope));
+
+        st.termSlope = st.termSlope + 0.02 * (0.015 - st.termSlope) + randn() * 0.003;
+        st.termSlope = Math.max(-0.04, Math.min(0.06, st.termSlope));
+
+        return buildMarketData(st, ticker);
+    }
+
+    function buildMarketData(st, ticker) {
+        const tenors = { '1W': 7, '2W': 14, '1M': 30, '2M': 60, '3M': 90, '6M': 180 };
+        const termStructure = {};
+        const baseT = 30;
+        Object.keys(tenors).forEach(key => {
+            const dte = tenors[key];
+            const tFactor = (Math.sqrt(dte / 365) - Math.sqrt(baseT / 365));
+            termStructure[key] = Math.max(0.04, st.ivLevel + st.termSlope * tFactor * 10 + randn() * 0.002);
+        });
+
+        const volSlope = (termStructure['3M'] - termStructure['1M']) * 100;
+
+        return {
+            spot: st.spot,
+            gex: st.gex,
+            vanna: st.vanna,
+            charm: st.charm,
+            dix: st.dix,
+            pcr: st.pcr,
+            termStructure,
+            volSlope,
+            ivLevel: st.ivLevel,
+            skewSlope: st.skewSlope,
+            timestamp: new Date()
+        };
+    }
+
+    // =========================================================================
+    // MERGE LIVE DATA INTO SIMULATED STATE
+    // =========================================================================
+    function mergePolygonData(simData, polygonData) {
+        if (!polygonData) return simData;
+
+        // Replace spot price with real data
+        simData.spot = polygonData.price;
+        simData.spotSource = 'polygon';
+
+        // Update the market state spot so subsequent simulations anchor to real price
+        if (marketState[currentTicker]) {
+            marketState[currentTicker].spot = polygonData.price;
+        }
+
+        // Correlate IV with real price movement
+        if (polygonData.change) {
+            const absChange = Math.abs(polygonData.change);
+            if (absChange > 1.5) {
+                simData.ivLevel *= (1 + absChange * 0.01);
+            }
+        }
+
+        return simData;
+    }
+
+    async function mergeBackendData(simData) {
+        if (!DATA_SOURCE.backendOnline) return simData;
+
+        try {
+            const [quoteData, termData] = await Promise.all([
+                fetchBackendQuote(currentTicker),
+                fetchBackendTermStructure(currentTicker)
+            ]);
+
+            if (quoteData && quoteData.price) {
+                simData.spot = quoteData.price;
+                simData.spotSource = 'backend';
+                if (marketState[currentTicker]) {
+                    marketState[currentTicker].spot = quoteData.price;
+                }
+            }
+
+            if (termData && termData.term_structure) {
+                // Overlay real IV term structure
+                const ts = termData.term_structure;
+                if (ts['1W']) simData.termStructure['1W'] = ts['1W'];
+                if (ts['2W']) simData.termStructure['2W'] = ts['2W'];
+                if (ts['1M']) simData.termStructure['1M'] = ts['1M'];
+                if (ts['2M']) simData.termStructure['2M'] = ts['2M'];
+                if (ts['3M']) simData.termStructure['3M'] = ts['3M'];
+                if (ts['6M']) simData.termStructure['6M'] = ts['6M'];
+                simData.ivLevel = ts['1M'] || simData.ivLevel;
+                simData.volSlope = ((ts['3M'] || simData.termStructure['3M']) - (ts['1M'] || simData.termStructure['1M'])) * 100;
+            }
+        } catch (e) {
+            // Silently fall back to simulated data
+        }
+
+        return simData;
+    }
+
+    // =========================================================================
+    // REGIME CLASSIFICATION
+    // =========================================================================
+    function analyzeMarketRegime(data) {
+        const { gex, vanna, charm, dix, volSlope, ivLevel, pcr } = data;
+
+        const dteToOpex = getDaysToNextOpex();
+        if (dteToOpex <= 2 && gex > 1.5e9) {
+            return { name: 'OPEX PINNING', class: 'regime-opex-pinning', description: 'Large positive gamma near OPEX. Dealers are aggressively hedging, expect strong magnetic effect to max-pain strike.', riskLevel: 'LOW', color: '#79c0ff' };
+        }
+
+        if (gex < -3e9 && ivLevel > 0.30 && pcr > 1.3) {
+            return { name: 'TAIL RISK', class: 'regime-tail-risk', description: 'Extreme negative gamma with elevated vol and heavy put demand. Crisis-level hedging pressure. Expect violent, gap-like moves.', riskLevel: 'EXTREME', color: '#ff7b72' };
+        }
+
+        if (gex < -1.5e9 && volSlope > 2.5) {
+            return { name: 'NEGATIVE GAMMA', class: 'regime-negative-gamma', description: 'Dealer short gamma forces amplified moves. Steep term structure signals fear. Intraday ranges will be elevated.', riskLevel: 'HIGH', color: '#f0883e' };
+        }
+
+        if (gex > 2e9 && vanna > 2e8 && ivLevel < 0.16) {
+            return { name: 'VOL CRUSH', class: 'regime-vol-crush', description: 'Massive positive gamma + positive vanna. Dealers dampen all moves. Expect realized vol well below implied.', riskLevel: 'LOW', color: '#f85149' };
+        }
+
+        if (Math.abs(vanna) > 5e8 && Math.abs(charm) > 2e8) {
+            return { name: 'DEALER HEDGING FLOW', class: 'regime-dealer-hedging', description: 'Large vanna and charm exposure driving systematic hedging flows. Expect directional drift aligned with dealer adjustments.', riskLevel: 'MEDIUM', color: '#a371f7' };
+        }
+
+        if (dix > 50 && Math.abs(gex) < 1e9 && pcr < 0.7) {
+            return { name: 'TREND FOLLOWING', class: 'regime-trend-following', description: 'High dark pool buying with low gamma resistance and bullish sentiment. Momentum strategies favored.', riskLevel: 'MEDIUM', color: '#56d364' };
+        }
+
+        if (gex > 1e9 && Math.abs(volSlope) < 1.5) {
+            return { name: 'GAMMA PIN', class: 'regime-gamma-pin', description: 'Positive gamma pins price near current level. Dealers buy dips and sell rips. Tight range expected.', riskLevel: 'LOW', color: '#3fb950' };
+        }
+
+        return { name: 'BALANCED', class: 'regime-neutral', description: 'No dominant positioning force. Mixed signals across flow indicators. Expect normal two-way price action.', riskLevel: 'MEDIUM', color: '#8b949e' };
+    }
+
+    function predictRegimeChange(ticker) {
+        const st = marketState[ticker];
+        if (!st || st.tick < 3) return { prediction: 'INSUFFICIENT DATA', confidence: '--' };
+        const gexMomentum = st.gex / 1e9;
+        const volDirection = st.ivLevel - TICKER_CONFIG[ticker].baseIV;
+        if (Math.abs(gexMomentum) < 0.5 && Math.abs(volDirection) > 0.03) {
+            return { prediction: 'REGIME SHIFT LIKELY', confidence: '68%' };
+        }
+        if (gexMomentum > 2) {
+            return { prediction: 'STABLE PIN', confidence: '78%' };
+        }
+        if (gexMomentum < -2) {
+            return { prediction: 'VOLATILITY EXPANSION', confidence: '72%' };
+        }
+        return { prediction: 'STABLE', confidence: '55%' };
+    }
+
+    // =========================================================================
+    // RISK ALERTS
+    // =========================================================================
+    function checkRiskAlerts(data, strategies) {
+        const alerts = [];
+
+        if (data.ivLevel > 0.30) {
+            alerts.push({ type: 'CRITICAL', message: 'IV at ' + (data.ivLevel * 100).toFixed(1) + '% -- extremely elevated implied volatility.', recommendation: 'Consider vol-selling structures (iron condors, strangles) with defined risk. Reduce long vega exposure.' });
+        } else if (data.ivLevel > 0.22) {
+            alerts.push({ type: 'WARNING', message: 'IV at ' + (data.ivLevel * 100).toFixed(1) + '% -- above average levels.', recommendation: 'Favor net short vega strategies. Calendar spreads can exploit elevated front-month vol.' });
+        }
+
+        if (data.gex < -3e9) {
+            alerts.push({ type: 'CRITICAL', message: 'GEX at ' + formatLargeNumber(data.gex) + ' -- extreme negative gamma.', recommendation: 'Reduce notional exposure. Widen stops. Avoid short premium near the money.' });
+        } else if (data.gex < -1.5e9) {
+            alerts.push({ type: 'WARNING', message: 'GEX at ' + formatLargeNumber(data.gex) + ' -- negative gamma environment.', recommendation: 'Expect amplified moves. Favor defined-risk spreads over naked positions.' });
+        }
+
+        if (data.pcr > 1.5) {
+            alerts.push({ type: 'WARNING', message: 'Put/Call ratio at ' + data.pcr.toFixed(2) + ' -- heavy put demand.', recommendation: 'Possible panic hedging. Contrarian bullish setups may emerge if GEX stabilizes.' });
+        }
+
+        if (data.dix < 35) {
+            alerts.push({ type: 'INFO', message: 'DIX at ' + data.dix.toFixed(1) + '% -- low dark pool buying.', recommendation: 'Institutional demand is weak. Use limit orders and reduce position sizes.' });
+        }
+
+        if (data.volSlope < -2) {
+            alerts.push({ type: 'WARNING', message: 'Term structure inverted (slope: ' + data.volSlope.toFixed(2) + '%). Front vol > back vol.', recommendation: 'Near-term event risk priced in. Calendar spreads selling front / buying back month are attractive.' });
+        }
+
+        if (strategies && strategies.length === 0) {
+            alerts.push({ type: 'INFO', message: 'No high-confidence strategies identified in current regime.', recommendation: 'Consider sitting flat or reducing to core positions. Wait for clearer signal.' });
+        }
+
+        if (alerts.length === 0) {
+            alerts.push({ type: 'INFO', message: 'No active risk alerts. Market conditions within normal parameters.', recommendation: 'Standard position sizing and risk management apply.' });
+        }
+
+        return alerts;
+    }
+
+    // =========================================================================
+    // GEX PROFILE BY STRIKE
+    // =========================================================================
+    function generateGEXProfile(data) {
+        const spot = data.spot;
+        const totalGex = data.gex;
+        const numStrikes = 21;
+        const strikeWidth = spot * 0.005;
+        const strikes = [];
+        const gexValues = [];
+
+        for (let i = -10; i <= 10; i++) {
+            const K = Math.round(spot + i * strikeWidth);
+            strikes.push(K);
+            const moneyness = (K - spot) / spot;
+            const gexContrib = totalGex * Math.exp(-moneyness * moneyness / (2 * 0.02 * 0.02)) * (1 + data.skewSlope * moneyness * 20);
+            gexValues.push(gexContrib / numStrikes);
+        }
+
+        return { strikes, gexValues };
+    }
+
+    // =========================================================================
+    // VOLATILITY SKEW (25-Delta)
+    // =========================================================================
+    function generateSkewData(data) {
+        const tenorLabels = ['1W', '2W', '1M', '2M', '3M', '6M'];
+        const putIV = [], callIV = [], skew = [];
+
+        tenorLabels.forEach((label) => {
+            const atmIV = data.termStructure[label] || data.ivLevel;
+            const pIV = atmIV * (1 - data.skewSlope * 1.5 + randn() * 0.003);
+            const cIV = atmIV * (1 + data.skewSlope * 0.3 + randn() * 0.002);
+            putIV.push(pIV * 100);
+            callIV.push(cIV * 100);
+            skew.push((pIV - cIV) * 100);
+        });
+
+        return { tenorLabels, putIV, callIV, skew };
+    }
+
+    // =========================================================================
+    // OPTIONS FLOW DATA
+    // =========================================================================
+    function generateFlowData(data) {
+        const spot = data.spot;
+        const strikeWidth = spot * 0.005;
+        const strikes = [];
+        const callFlow = [], putFlow = [];
+
+        for (let i = -5; i <= 5; i++) {
+            const K = Math.round(spot + i * strikeWidth);
+            strikes.push(K);
+            const cf = Math.max(0, 5000 + randn() * 3000 + (i > 0 ? -500 * i : 200 * Math.abs(i)));
+            const pf = Math.max(0, 4000 + randn() * 2500 + (i < 0 ? -400 * i : 300 * Math.abs(i)));
+            callFlow.push(cf);
+            putFlow.push(-pf);
+        }
+
+        return { strikes, callFlow, putFlow };
+    }
+
+    // =========================================================================
+    // STRATEGY ENGINE
+    // =========================================================================
+    function generateStrategies(data, regime) {
+        const { spot, termStructure, gex, vanna, dix, ivLevel, pcr, skewSlope } = data;
+        const strategies = [];
+        const r = 0.045;
+
+        const nextFriday = getNextFriday();
+        const monthlyExp = getMonthlyExpiration();
+        const frontDTE = getDaysToDate(nextFriday);
+        const backDTE = getDaysToDate(monthlyExp);
+        const iv = ivLevel;
+
+        if (gex > 1e9) {
+            const shortCallK = Math.round(spot + spot * 0.03);
+            const longCallK = Math.round(spot + spot * 0.05);
+            const shortPutK = Math.round(spot - spot * 0.03);
+            const longPutK = Math.round(spot - spot * 0.05);
+
+            const sc = blackScholes(spot, shortCallK, frontDTE / 365, r, iv, true);
+            const lc = blackScholes(spot, longCallK, frontDTE / 365, r, iv, true);
+            const sp = blackScholes(spot, shortPutK, frontDTE / 365, r, iv, false);
+            const lp = blackScholes(spot, longPutK, frontDTE / 365, r, iv, false);
+
+            const credit = (sc.price - lc.price + sp.price - lp.price) * 100;
+            const width = (longCallK - shortCallK) * 100;
+            const maxLoss = width - credit;
+
+            strategies.push({
+                name: 'IRON CONDOR', type: 'NEUTRAL', confidence: gex > 2e9 ? 'HIGH' : 'MEDIUM',
+                description: 'Positive GEX pins price. Sell premium in the wings with defined risk. Theta harvesting play.',
+                strikes: { shortCall: shortCallK, longCall: longCallK, shortPut: shortPutK, longPut: longPutK },
+                expiration: nextFriday,
+                maxProfit: '$' + credit.toFixed(0), maxLoss: '$' + maxLoss.toFixed(0),
+                breakevens: [shortPutK - credit / 100, shortCallK + credit / 100],
+                greeks: { delta: ((sc.delta - lc.delta + sp.delta - lp.delta) * 100).toFixed(2), gamma: ((sc.gamma - lc.gamma + sp.gamma - lp.gamma) * 100).toFixed(4), theta: ((sc.theta - lc.theta + sp.theta - lp.theta) * 100).toFixed(2), vega: ((sc.vega - lc.vega + sp.vega - lp.vega) * 100).toFixed(2) },
+                probProfit: calculateProbability(spot, shortCallK, iv, frontDTE) - (1 - calculateProbability(spot, shortPutK, iv, frontDTE)),
+                payoff: computePayoff('ironCondor', spot, { shortCallK, longCallK, shortPutK, longPutK, credit })
+            });
+        }
+
+        const volSlope = (termStructure['3M'] - termStructure['1M']) * 100;
+        if (volSlope > 1.5 && backDTE > frontDTE + 14) {
+            const calK = Math.round(spot);
+            const frontIV = termStructure['1M'] || iv;
+            const backIV = termStructure['3M'] || iv;
+            const frontCall = blackScholes(spot, calK, frontDTE / 365, r, frontIV, true);
+            const backCall = blackScholes(spot, calK, backDTE / 365, r, backIV, true);
+            const debit = (backCall.price - frontCall.price) * 100;
+
+            strategies.push({
+                name: 'CALL CALENDAR SPREAD', type: 'VOLATILITY', confidence: volSlope > 3 ? 'HIGH' : 'MEDIUM',
+                description: 'Steep term structure. Sell overpriced front-month vol, own cheap back-month. Profits from vol convergence and time decay.',
+                strikes: { strike: calK, frontExp: nextFriday, backExp: monthlyExp },
+                expiration: nextFriday + ' / ' + monthlyExp,
+                maxProfit: '$' + (debit * 1.5).toFixed(0) + ' (est)', maxLoss: '$' + debit.toFixed(0),
+                breakevens: [calK - debit / 100 * 0.8, calK + debit / 100 * 0.8],
+                greeks: { delta: ((backCall.delta - frontCall.delta) * 100).toFixed(2), gamma: ((backCall.gamma - frontCall.gamma) * 100).toFixed(4), theta: ((-backCall.theta + frontCall.theta) * 100).toFixed(2), vega: ((backCall.vega - frontCall.vega) * 100).toFixed(2) },
+                probProfit: 0.45 + volSlope * 0.02,
+                payoff: computePayoff('calendar', spot, { calK, debit })
+            });
+        }
+
+        if (dix > 46 && Math.abs(vanna) > 2e8) {
+            const direction = vanna > 0 ? 'BULL' : 'BEAR';
+            const isBull = vanna > 0;
+            const longK = Math.round(isBull ? spot - spot * 0.005 : spot + spot * 0.005);
+            const shortK = Math.round(isBull ? spot + spot * 0.03 : spot - spot * 0.03);
+            const longLeg = blackScholes(spot, longK, frontDTE / 365, r, iv, isBull);
+            const shortLeg = blackScholes(spot, shortK, frontDTE / 365, r, iv, isBull);
+            const debit = (longLeg.price - shortLeg.price) * 100;
+            const width = Math.abs(shortK - longK) * 100;
+            const maxProf = width - debit;
+
+            strategies.push({
+                name: direction + ' VERTICAL (VANNA)', type: 'DIRECTIONAL', confidence: Math.abs(vanna) > 5e8 ? 'HIGH' : 'MEDIUM',
+                description: (isBull ? 'Bullish' : 'Bearish') + ' vanna flow + dark pool activity. Debit spread captures directional move with capped risk.',
+                strikes: isBull ? { longCall: longK, shortCall: shortK } : { longPut: longK, shortPut: shortK },
+                expiration: nextFriday,
+                maxProfit: '$' + maxProf.toFixed(0), maxLoss: '$' + debit.toFixed(0),
+                breakevens: [isBull ? longK + debit / 100 : longK - debit / 100],
+                greeks: { delta: ((longLeg.delta - shortLeg.delta) * 100).toFixed(2), gamma: ((longLeg.gamma - shortLeg.gamma) * 100).toFixed(4), theta: ((longLeg.theta - shortLeg.theta) * 100).toFixed(2), vega: ((longLeg.vega - shortLeg.vega) * 100).toFixed(2) },
+                probProfit: isBull ? calculateProbability(spot, longK + debit / 100, iv, frontDTE) : 1 - calculateProbability(spot, longK - debit / 100, iv, frontDTE),
+                payoff: computePayoff('vertical', spot, { longK, shortK, debit, isBull })
+            });
+        }
+
+        if (Math.abs(gex) < 8e8 && termStructure['1W'] > termStructure['1M']) {
+            const midK = Math.round(spot);
+            const wingWidth = Math.round(spot * 0.03);
+            const lowK = midK - wingWidth;
+            const highK = midK + wingWidth;
+            const longLow = blackScholes(spot, lowK, frontDTE / 365, r, iv, true);
+            const shortMid = blackScholes(spot, midK, frontDTE / 365, r, iv, true);
+            const longHigh = blackScholes(spot, highK, frontDTE / 365, r, iv, true);
+            const debit = (longLow.price - 2 * shortMid.price + longHigh.price) * 100;
+            const maxProf = wingWidth * 100 - Math.abs(debit);
+
+            strategies.push({
+                name: 'CALL BUTTERFLY', type: 'NEUTRAL', confidence: 'MEDIUM',
+                description: 'Low gamma + inverted front vol. Cheap butterfly exploits potential pin near current spot. Excellent risk/reward.',
+                strikes: { longLower: lowK, shortMiddle: midK + ' (x2)', longUpper: highK },
+                expiration: nextFriday,
+                maxProfit: '$' + maxProf.toFixed(0), maxLoss: '$' + Math.abs(debit).toFixed(0),
+                breakevens: [lowK + Math.abs(debit) / 100, highK - Math.abs(debit) / 100],
+                greeks: { delta: ((longLow.delta - 2 * shortMid.delta + longHigh.delta) * 100).toFixed(2), gamma: ((longLow.gamma - 2 * shortMid.gamma + longHigh.gamma) * 100).toFixed(4), theta: ((longLow.theta - 2 * shortMid.theta + longHigh.theta) * 100).toFixed(2), vega: ((longLow.vega - 2 * shortMid.vega + longHigh.vega) * 100).toFixed(2) },
+                probProfit: 0.30 + 0.05 * (1 - Math.abs(gex) / 1e9),
+                payoff: computePayoff('butterfly', spot, { lowK, midK, highK, debit })
+            });
+        }
+
+        if (Math.abs(gex) < 5e8 && volSlope < -1 && ivLevel < 0.18) {
+            const straddleK = Math.round(spot);
+            const callBS = blackScholes(spot, straddleK, frontDTE / 365, r, iv, true);
+            const putBS = blackScholes(spot, straddleK, frontDTE / 365, r, iv, false);
+            const cost = (callBS.price + putBS.price) * 100;
+
+            strategies.push({
+                name: 'LONG STRADDLE', type: 'VOLATILITY', confidence: ivLevel < 0.14 ? 'HIGH' : 'MEDIUM',
+                description: 'Low gamma + inverted vol + cheap IV. Expecting breakout. Long gamma position profits from realized > implied.',
+                strikes: { callStrike: straddleK, putStrike: straddleK },
+                expiration: nextFriday,
+                maxProfit: 'UNLIMITED', maxLoss: '$' + cost.toFixed(0),
+                breakevens: [straddleK - cost / 100, straddleK + cost / 100],
+                greeks: { delta: ((callBS.delta + putBS.delta) * 100).toFixed(2), gamma: ((callBS.gamma + putBS.gamma) * 100).toFixed(4), theta: ((callBS.theta + putBS.theta) * 100).toFixed(2), vega: ((callBS.vega + putBS.vega) * 100).toFixed(2) },
+                probProfit: 0.35,
+                payoff: computePayoff('straddle', spot, { straddleK, cost })
+            });
+        }
+
+        return strategies;
+    }
+
+    // =========================================================================
+    // PAYOFF DIAGRAM COMPUTATION
+    // =========================================================================
+    function computePayoff(type, spot, params) {
+        const range = spot * 0.08;
+        const points = 80;
+        const prices = [], pnl = [];
+
+        for (let i = 0; i <= points; i++) {
+            const S = spot - range + (2 * range * i / points);
+            prices.push(S);
+            let pl = 0;
+
+            switch (type) {
+                case 'ironCondor': {
+                    const { shortCallK, longCallK, shortPutK, longPutK, credit } = params;
+                    pl = (-Math.max(0, S - shortCallK) + Math.max(0, S - longCallK) - Math.max(0, shortPutK - S) + Math.max(0, longPutK - S)) * 100 + credit;
+                    break;
+                }
+                case 'vertical': {
+                    const { longK, shortK, debit, isBull } = params;
+                    if (isBull) {
+                        pl = (Math.max(0, S - longK) - Math.max(0, S - shortK)) * 100 - debit;
+                    } else {
+                        pl = (Math.max(0, longK - S) - Math.max(0, shortK - S)) * 100 - debit;
+                    }
+                    break;
+                }
+                case 'butterfly': {
+                    const { lowK, midK, highK, debit } = params;
+                    pl = (Math.max(0, S - lowK) - 2 * Math.max(0, S - midK) + Math.max(0, S - highK)) * 100 - Math.abs(debit);
+                    break;
+                }
+                case 'straddle': {
+                    const { straddleK, cost } = params;
+                    pl = (Math.max(0, S - straddleK) + Math.max(0, straddleK - S)) * 100 - cost;
+                    break;
+                }
+                case 'calendar': {
+                    const { calK, debit } = params;
+                    const dist = Math.abs(S - calK) / spot;
+                    pl = debit * 0.5 * Math.exp(-dist * dist / (2 * 0.0004)) - debit * 0.3;
+                    break;
+                }
+            }
+            pnl.push(pl);
+        }
+
+        return { prices, pnl };
+    }
+
+    // =========================================================================
+    // UTILITY FUNCTIONS
+    // =========================================================================
+    function formatLargeNumber(num) {
+        if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+        if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+        if (Math.abs(num) >= 1e3) return (num / 1e3).toFixed(0) + 'K';
+        return num.toFixed(0);
+    }
+
+    function getNextFriday() {
+        const today = new Date();
+        const daysUntilFriday = (5 - today.getDay() + 7) % 7;
+        const nf = new Date(today);
+        nf.setDate(today.getDate() + (daysUntilFriday || 7));
+        return nf.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function getMonthlyExpiration() {
+        const today = new Date();
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const thirdFriday = new Date(nextMonth);
+        thirdFriday.setDate(1 + ((5 - nextMonth.getDay() + 7) % 7) + 14);
+        return thirdFriday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function getDaysToDate(dateStr) {
+        const target = new Date(dateStr + ', ' + new Date().getFullYear());
+        if (isNaN(target)) return 14;
+        const diff = (target - new Date()) / (1000 * 60 * 60 * 24);
+        return Math.max(1, Math.round(diff));
+    }
+
+    function getDaysToNextOpex() {
+        const today = new Date();
+        let month = today.getMonth();
+        let year = today.getFullYear();
+        for (let m = 0; m < 2; m++) {
+            const first = new Date(year, month + m, 1);
+            const thirdFriday = new Date(first);
+            thirdFriday.setDate(1 + ((5 - first.getDay() + 7) % 7) + 14);
+            const diff = (thirdFriday - today) / (1000 * 60 * 60 * 24);
+            if (diff >= 0) return Math.round(diff);
+        }
+        return 30;
+    }
+
+    // =========================================================================
+    // 3D VOLATILITY SURFACE (Three.js with touch support)
+    // =========================================================================
+    function init3DVolSurface() {
+        const container = document.getElementById('volSurface3D');
+        const w = container.offsetWidth;
+        const h = container.offsetHeight;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x080a0e);
+
+        const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+        camera.position.set(22, 18, 22);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.domElement.style.touchAction = 'none';
+        container.appendChild(renderer.domElement);
+
+        // OrbitControls with touch support
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.rotateSpeed = 0.5;
+        controls.minDistance = 10;
+        controls.maxDistance = 60;
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404050, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(15, 20, 10);
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0x58a6ff, 0.4, 60);
+        pointLight.position.set(-10, 15, -10);
+        scene.add(pointLight);
+
+        const gridHelper = new THREE.GridHelper(24, 24, 0x21262d, 0x161b22);
+        gridHelper.position.y = -1;
+        scene.add(gridHelper);
+
+        const axMat = new THREE.LineBasicMaterial({ color: 0x484f58 });
+        const xGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-12, -1, -12), new THREE.Vector3(12, -1, -12)]);
+        scene.add(new THREE.Line(xGeo, axMat));
+        const yGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-12, -1, -12), new THREE.Vector3(-12, -1, 12)]);
+        scene.add(new THREE.Line(yGeo, axMat));
+        const zGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-12, -1, -12), new THREE.Vector3(-12, 14, -12)]);
+        scene.add(new THREE.Line(zGeo, axMat));
+
+        volSurface3D = { scene, camera, renderer, controls, surface: null, container };
+
+        updateVolSurface(null);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+
+    function updateVolSurface(data) {
+        if (!volSurface3D) return;
+        const { scene } = volSurface3D;
+
+        if (volSurface3D.surface) {
+            scene.remove(volSurface3D.surface);
+            volSurface3D.surface.geometry.dispose();
+            volSurface3D.surface.material.dispose();
+        }
+
+        const strikeSeg = 40;
+        const dteSeg = 30;
+        const geometry = new THREE.PlaneGeometry(24, 24, strikeSeg, dteSeg);
+        const vertices = geometry.attributes.position.array;
+        const colors = [];
+
+        const st = marketState[currentTicker] || { ivLevel: 0.16, skewSlope: -0.06, termSlope: 0.015 };
+        const ivBase = data ? data.ivLevel : st.ivLevel;
+        const skew = data ? data.skewSlope : st.skewSlope;
+        const tSlope = st.termSlope || 0.015;
+
+        let minIV = 999, maxIV = 0;
+        const ivGrid = [];
+
+        for (let j = 0; j <= dteSeg; j++) {
+            for (let i = 0; i <= strikeSeg; i++) {
+                const idx = (j * (strikeSeg + 1) + i) * 3;
+                const moneyness = (vertices[idx] / 12);
+                const dteNorm = (vertices[idx + 1] / 12);
+
+                const smile = 0.08 * moneyness * moneyness;
+                const skewEffect = skew * moneyness * 3;
+                const termEffect = tSlope * dteNorm * 2;
+                const wingEffect = 0.03 * Math.pow(Math.abs(moneyness), 3);
+
+                const iv = Math.max(0.04, ivBase + smile + skewEffect + termEffect + wingEffect);
+                ivGrid.push(iv);
+                if (iv < minIV) minIV = iv;
+                if (iv > maxIV) maxIV = iv;
+            }
+        }
+
+        const ivRange = maxIV - minIV || 0.01;
+        for (let k = 0; k < ivGrid.length; k++) {
+            const idx = k * 3;
+            const iv = ivGrid[k];
+            vertices[idx + 2] = ((iv - minIV) / ivRange) * 12;
+
+            const t = (iv - minIV) / ivRange;
+            let r, g, b;
+            if (t < 0.25) { r = 0; g = t * 4; b = 1 - t * 2; }
+            else if (t < 0.5) { r = 0; g = 1; b = 0; }
+            else if (t < 0.75) { r = (t - 0.5) * 4; g = 1; b = 0; }
+            else { r = 1; g = 1 - (t - 0.75) * 4; b = 0; }
+            colors.push(r, g, b);
+        }
+
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.attributes.position.needsUpdate = true;
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhongMaterial({
+            vertexColors: true,
+            side: THREE.DoubleSide,
+            shininess: 40,
+            transparent: true,
+            opacity: 0.92,
+            flatShading: false
+        });
+
+        const surface = new THREE.Mesh(geometry, material);
+        surface.rotation.x = -Math.PI / 2;
+        surface.position.y = 5;
+        scene.add(surface);
+        volSurface3D.surface = surface;
+    }
+
+    // =========================================================================
+    // CHART INITIALIZATION AND UPDATES
+    // =========================================================================
+    function initCharts() {
+        const chartDefaults = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 300 },
+            plugins: { legend: { labels: { color: '#8b949e', font: { size: 10, family: 'Monaco, Consolas, monospace' } } } },
+        };
+        const gridColor = 'rgba(48, 54, 61, 0.5)';
+        const tickColor = '#8b949e';
+
+        charts.termStructure = new Chart(document.getElementById('termStructureChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['1W', '2W', '1M', '2M', '3M', '6M'],
+                datasets: [
+                    { label: 'Current IV', data: [], borderColor: '#58a6ff', backgroundColor: 'rgba(88, 166, 255, 0.08)', tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#58a6ff', borderWidth: 2 },
+                    { label: 'Previous', data: [], borderColor: 'rgba(88, 166, 255, 0.25)', backgroundColor: 'transparent', tension: 0.3, fill: false, pointRadius: 2, borderWidth: 1, borderDash: [4, 4] }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                plugins: { ...chartDefaults.plugins, legend: { display: true, labels: { color: '#8b949e', font: { size: 9, family: 'Monaco, Consolas, monospace' } } } },
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { color: gridColor } },
+                    y: { ticks: { color: tickColor, font: { size: 9 }, callback: v => (v * 100).toFixed(1) + '%' }, grid: { color: gridColor } }
+                }
+            }
+        });
+
+        charts.flow = new Chart(document.getElementById('flowChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Call Flow', data: [], backgroundColor: 'rgba(63, 185, 80, 0.7)', borderColor: '#3fb950', borderWidth: 1, stack: 'flow' },
+                    { label: 'Put Flow', data: [], backgroundColor: 'rgba(248, 81, 73, 0.7)', borderColor: '#f85149', borderWidth: 1, stack: 'flow' }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                plugins: { legend: { display: true, position: 'top', labels: { color: '#8b949e', font: { size: 8, family: 'Monaco, Consolas, monospace' }, boxWidth: 10 } } },
+                scales: {
+                    x: { stacked: true, ticks: { color: tickColor, font: { size: 8 } }, grid: { color: gridColor } },
+                    y: { stacked: true, ticks: { color: tickColor, font: { size: 8 }, callback: v => (v / 1000).toFixed(0) + 'K' }, grid: { color: gridColor } }
+                }
+            }
+        });
+
+        charts.pcr = new Chart(document.getElementById('pcrChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: 'P/C Ratio', data: [], borderColor: '#d29922', backgroundColor: 'rgba(210, 153, 34, 0.08)', tension: 0.3, fill: true, pointRadius: 2, borderWidth: 1.5 }]
+            },
+            options: {
+                ...chartDefaults,
+                plugins: { legend: { display: true, labels: { color: '#8b949e', font: { size: 8, family: 'Monaco, Consolas, monospace' }, boxWidth: 10 } } },
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 8 }, maxTicksLimit: 8 }, grid: { color: gridColor } },
+                    y: { ticks: { color: tickColor, font: { size: 8 } }, grid: { color: gridColor }, suggestedMin: 0.5, suggestedMax: 1.5 }
+                }
+            }
+        });
+
+        charts.gexProfile = new Chart(document.getElementById('gexProfileChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Gamma Exposure ($)', data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }] },
+            options: {
+                ...chartDefaults,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 8 }, maxRotation: 45 }, grid: { color: gridColor } },
+                    y: { ticks: { color: tickColor, font: { size: 8 }, callback: v => formatLargeNumber(v) }, grid: { color: gridColor } }
+                }
+            }
+        });
+
+        charts.skew = new Chart(document.getElementById('skewChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['1W', '2W', '1M', '2M', '3M', '6M'],
+                datasets: [
+                    { label: '25D Put IV', data: [], borderColor: '#f85149', backgroundColor: 'rgba(248, 81, 73, 0.05)', tension: 0.3, fill: false, pointRadius: 3, borderWidth: 2 },
+                    { label: '25D Call IV', data: [], borderColor: '#3fb950', backgroundColor: 'rgba(63, 185, 80, 0.05)', tension: 0.3, fill: false, pointRadius: 3, borderWidth: 2 },
+                    { label: 'Skew (P-C)', data: [], borderColor: '#d29922', backgroundColor: 'rgba(210, 153, 34, 0.1)', tension: 0.3, fill: true, pointRadius: 3, borderWidth: 2, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                plugins: { legend: { display: true, labels: { color: '#8b949e', font: { size: 8, family: 'Monaco, Consolas, monospace' }, boxWidth: 10 } } },
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { color: gridColor } },
+                    y: { position: 'left', ticks: { color: tickColor, font: { size: 8 }, callback: v => v.toFixed(1) + '%' }, grid: { color: gridColor } },
+                    y1: { position: 'right', ticks: { color: '#d29922', font: { size: 8 }, callback: v => v.toFixed(1) + '%' }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    // =========================================================================
+    // DISPLAY UPDATE FUNCTIONS
+    // =========================================================================
+    function updateMetricsDisplay(data) {
+        const prev = previousData[currentTicker] || {};
+
+        function updateMetric(id, value, prevValue, formatter) {
+            document.getElementById(id + '-value').textContent = formatter(value);
+            const change = value - (prevValue || 0);
+            const el = document.getElementById(id + '-change');
+            if (el) {
+                el.textContent = (change >= 0 ? '+' : '') + formatter(change);
+                el.className = 'metric-change ' + (change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral');
+            }
+        }
+
+        updateMetric('gex', data.gex, prev.gex, formatLargeNumber);
+        updateMetric('vanna', data.vanna, prev.vanna, formatLargeNumber);
+        updateMetric('charm', data.charm, prev.charm, formatLargeNumber);
+        updateMetric('dix', data.dix, prev.dix, v => v.toFixed(1) + '%');
+        updateMetric('pcr', data.pcr, prev.pcr, v => v.toFixed(2));
+        updateMetric('vol-slope', data.volSlope, prev.volSlope, v => v.toFixed(2) + '%');
+
+        Object.keys(data.termStructure).forEach(term => {
+            const el = document.getElementById('iv-' + term.toLowerCase());
+            if (el) {
+                el.textContent = (data.termStructure[term] * 100).toFixed(1) + '%';
+                const prevTS = prev.termStructure || {};
+                const change = data.termStructure[term] - (prevTS[term] || 0);
+                el.className = 'term-value ' + (change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral');
+            }
+        });
+
+        // Spot display with source tag
+        const sourceTag = data.spotSource ? ' <span class="spot-source-tag">[' + data.spotSource.toUpperCase() + ']</span>' : ' <span class="spot-source-tag">[SIM]</span>';
+        document.getElementById('spot-display').innerHTML = currentTicker + ': ' + data.spot.toFixed(2) + sourceTag;
+    }
+
+    function updateRegimeDisplay(regime, prediction) {
+        const display = document.getElementById('regime-display');
+        display.className = 'regime-display ' + regime.class;
+        document.getElementById('regime-name').textContent = regime.name;
+        document.getElementById('regime-name').style.color = regime.color;
+        document.getElementById('regime-description').textContent = regime.description;
+        document.getElementById('regime-risk').textContent = regime.riskLevel;
+        document.getElementById('regime-risk').style.color =
+            regime.riskLevel === 'EXTREME' ? '#f85149' :
+            regime.riskLevel === 'HIGH' ? '#f0883e' :
+            regime.riskLevel === 'MEDIUM' ? '#d29922' : '#3fb950';
+        document.getElementById('regime-prediction').textContent = prediction.prediction;
+        document.getElementById('regime-confidence').textContent = prediction.confidence;
+    }
+
+    function updateCharts(data) {
+        const termData = Object.values(data.termStructure);
+        const prevTermData = historicalTermStructures[currentTicker] || termData;
+        charts.termStructure.data.datasets[0].data = termData;
+        charts.termStructure.data.datasets[1].data = prevTermData;
+        charts.termStructure.update('none');
+        historicalTermStructures[currentTicker] = [...termData];
+
+        const flowData = generateFlowData(data);
+        charts.flow.data.labels = flowData.strikes;
+        charts.flow.data.datasets[0].data = flowData.callFlow;
+        charts.flow.data.datasets[1].data = flowData.putFlow;
+        charts.flow.update('none');
+
+        if (!historicalPCR[currentTicker]) historicalPCR[currentTicker] = { labels: [], values: [] };
+        const pcrHist = historicalPCR[currentTicker];
+        const timeLabel = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        pcrHist.labels.push(timeLabel);
+        pcrHist.values.push(data.pcr);
+        if (pcrHist.labels.length > 30) { pcrHist.labels.shift(); pcrHist.values.shift(); }
+        charts.pcr.data.labels = pcrHist.labels;
+        charts.pcr.data.datasets[0].data = pcrHist.values;
+        charts.pcr.update('none');
+
+        const gexData = generateGEXProfile(data);
+        charts.gexProfile.data.labels = gexData.strikes;
+        charts.gexProfile.data.datasets[0].data = gexData.gexValues;
+        charts.gexProfile.data.datasets[0].backgroundColor = gexData.gexValues.map(v => v >= 0 ? 'rgba(63, 185, 80, 0.7)' : 'rgba(248, 81, 73, 0.7)');
+        charts.gexProfile.data.datasets[0].borderColor = gexData.gexValues.map(v => v >= 0 ? '#3fb950' : '#f85149');
+        charts.gexProfile.update('none');
+
+        const skewData = generateSkewData(data);
+        charts.skew.data.datasets[0].data = skewData.putIV;
+        charts.skew.data.datasets[1].data = skewData.callIV;
+        charts.skew.data.datasets[2].data = skewData.skew;
+        charts.skew.update('none');
+
+        updateVolSurface(data);
+    }
+
+    function renderAlerts(alerts) {
+        const container = document.getElementById('alerts-container');
+        container.innerHTML = '';
+        alerts.forEach(alert => {
+            const div = document.createElement('div');
+            div.className = 'alert-item alert-' + alert.type;
+            div.innerHTML = '<div class="alert-badge">' + alert.type + '</div>' +
+                '<div class="alert-body"><div>' + alert.message + '</div>' +
+                '<div class="alert-recommendation">' + alert.recommendation + '</div></div>';
+            container.appendChild(div);
+        });
+    }
+
+    function renderStrategies(strategies) {
+        const grid = document.getElementById('strategyGrid');
+        grid.innerHTML = '';
+
+        if (strategies.length === 0) {
+            grid.innerHTML = '<div style="color:#8b949e; padding:20px; text-align:center;">No high-confidence strategies in current regime. Wait for clearer signal.</div>';
+            return;
+        }
+
+        strategies.forEach((strat, idx) => {
+            const card = document.createElement('div');
+            card.className = 'strategy-card';
+
+            let strikesHTML = '';
+            if (strat.strikes) {
+                Object.entries(strat.strikes).forEach(([key, val]) => {
+                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                    strikesHTML += '<div class="strike-info">' + label + ': ' + val + '</div>';
+                });
+            }
+
+            const canvasId = 'payoff-' + idx;
+            const pp = strat.probProfit ? (Math.min(0.99, Math.max(0.01, strat.probProfit)) * 100).toFixed(0) : '--';
+
+            card.innerHTML =
+                '<div class="strategy-header">' +
+                    '<div class="strategy-name">' + strat.name + '</div>' +
+                    '<div class="confidence-badge confidence-' + strat.confidence + '">' + strat.confidence + '</div>' +
+                '</div>' +
+                '<div class="strategy-desc">' + strat.description + '</div>' +
+                strikesHTML +
+                '<div class="greeks-row">' +
+                    '<div class="greek-box"><div class="greek-label">Delta</div><div class="greek-value">' + strat.greeks.delta + '</div></div>' +
+                    '<div class="greek-box"><div class="greek-label">Gamma</div><div class="greek-value">' + strat.greeks.gamma + '</div></div>' +
+                    '<div class="greek-box"><div class="greek-label">Theta</div><div class="greek-value">' + strat.greeks.theta + '</div></div>' +
+                    '<div class="greek-box"><div class="greek-label">Vega</div><div class="greek-value">' + strat.greeks.vega + '</div></div>' +
+                '</div>' +
+                '<canvas class="payoff-canvas" id="' + canvasId + '"></canvas>' +
+                '<div class="pnl-projection">' +
+                    '<div><span class="proj-label">Max Profit: </span><span class="proj-profit">' + strat.maxProfit + '</span></div>' +
+                    '<div><span class="proj-label">Max Loss: </span><span class="proj-loss">' + strat.maxLoss + '</span></div>' +
+                    '<div><span class="proj-label">Breakevens: </span>' + (Array.isArray(strat.breakevens) ? strat.breakevens.map(b => b.toFixed(1)).join(', ') : strat.breakevens) + '</div>' +
+                    '<div><span class="proj-label">P(Profit): </span>' + pp + '%</div>' +
+                '</div>';
+
+            grid.appendChild(card);
+
+            if (strat.payoff) {
+                drawPayoffDiagram(canvasId, strat.payoff, strat);
+            }
+        });
+    }
+
+    function drawPayoffDiagram(canvasId, payoff, strat) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width = canvas.offsetWidth * 2;
+        const h = canvas.height = canvas.offsetHeight * 2;
+        ctx.scale(2, 2);
+        const dw = canvas.offsetWidth;
+        const dh = canvas.offsetHeight;
+
+        const { prices, pnl } = payoff;
+        const minPnl = Math.min(...pnl);
+        const maxPnl = Math.max(...pnl);
+        const range = maxPnl - minPnl || 1;
+        const pad = 4;
+
+        const zeroY = pad + (dh - 2 * pad) * (1 - (0 - minPnl) / range);
+        ctx.strokeStyle = '#30363d';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(pad, zeroY);
+        ctx.lineTo(dw - pad, zeroY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#58a6ff';
+        ctx.lineWidth = 1.2;
+        for (let i = 0; i < prices.length; i++) {
+            const x = pad + (dw - 2 * pad) * i / (prices.length - 1);
+            const y = pad + (dh - 2 * pad) * (1 - (pnl[i] - minPnl) / range);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        for (let i = 0; i < prices.length - 1; i++) {
+            const x1 = pad + (dw - 2 * pad) * i / (prices.length - 1);
+            const x2 = pad + (dw - 2 * pad) * (i + 1) / (prices.length - 1);
+            const y1 = pad + (dh - 2 * pad) * (1 - (pnl[i] - minPnl) / range);
+            const y2 = pad + (dh - 2 * pad) * (1 - (pnl[i + 1] - minPnl) / range);
+            ctx.fillStyle = pnl[i] >= 0 ? 'rgba(63, 185, 80, 0.15)' : 'rgba(248, 81, 73, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(x1, zeroY);
+            ctx.lineTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x2, zeroY);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    // =========================================================================
+    // BLACK-SCHOLES CALCULATOR
+    // =========================================================================
+    function runBSCalculator() {
+        const S = parseFloat(document.getElementById('bs-spot').value) || (marketState[currentTicker] ? marketState[currentTicker].spot : 500);
+        const K = parseFloat(document.getElementById('bs-strike').value) || S;
+        const ivPct = parseFloat(document.getElementById('bs-iv').value) || (marketState[currentTicker] ? marketState[currentTicker].ivLevel * 100 : 16);
+        const dte = parseFloat(document.getElementById('bs-dte').value) || 30;
+
+        const sigma = ivPct / 100;
+        const T = dte / 365;
+        const r = 0.045;
+
+        const call = blackScholes(S, K, T, r, sigma, true);
+        const put = blackScholes(S, K, T, r, sigma, false);
+
+        document.getElementById('bs-call').textContent = '$' + call.price.toFixed(2);
+        document.getElementById('bs-put').textContent = '$' + put.price.toFixed(2);
+        document.getElementById('bs-delta').textContent = call.delta.toFixed(4);
+        document.getElementById('bs-gamma').textContent = call.gamma.toFixed(6);
+        document.getElementById('bs-theta').textContent = call.theta.toFixed(4);
+        document.getElementById('bs-vega').textContent = call.vega.toFixed(4);
+
+        if (!document.getElementById('bs-spot').value) document.getElementById('bs-spot').value = S.toFixed(2);
+        if (!document.getElementById('bs-strike').value) document.getElementById('bs-strike').value = K.toFixed(0);
+        if (!document.getElementById('bs-iv').value) document.getElementById('bs-iv').value = ivPct.toFixed(1);
+        if (!document.getElementById('bs-dte').value) document.getElementById('bs-dte').value = dte;
+    }
+
+    // =========================================================================
+    // MAIN REFRESH (async with data source routing)
+    // =========================================================================
+    async function refreshAll() {
+        const prevState = marketState[currentTicker] ? buildMarketData(marketState[currentTicker], currentTicker) : null;
+        previousData[currentTicker] = prevState || {};
+
+        // Always evolve simulated state
+        let data = evolveMarketState(currentTicker);
+
+        // Overlay live data based on mode
+        if (DATA_SOURCE.mode === 'polygon' || DATA_SOURCE.mode === 'hybrid') {
+            try {
+                const polygonData = await fetchPolygonSnapshot(currentTicker);
+                data = mergePolygonData(data, polygonData);
+            } catch (e) {
+                // Silently fall back to simulated data
+            }
+        }
+
+        if (DATA_SOURCE.mode === 'hybrid') {
+            try {
+                data = await mergeBackendData(data);
+            } catch (e) {
+                // Silently fall back
+            }
+        }
+
+        const regime = analyzeMarketRegime(data);
+        const prediction = predictRegimeChange(currentTicker);
+        const strategies = generateStrategies(data, regime);
+        const alerts = checkRiskAlerts(data, strategies);
+
+        updateMetricsDisplay(data);
+        updateRegimeDisplay(regime, prediction);
+        updateCharts(data);
+        renderStrategies(strategies);
+        renderAlerts(alerts);
+
+        if (!document.getElementById('bs-spot').value) {
+            document.getElementById('bs-spot').value = data.spot.toFixed(2);
+            document.getElementById('bs-strike').value = Math.round(data.spot);
+            document.getElementById('bs-iv').value = (data.ivLevel * 100).toFixed(1);
+            document.getElementById('bs-dte').value = 30;
+        }
+
+        const modeLabel = DATA_SOURCE.mode === 'demo' ? 'DEMO' : DATA_SOURCE.mode === 'polygon' ? 'LIVE' : 'HYBRID';
+        document.getElementById('last-update').textContent =
+            'Last updated: ' + new Date().toLocaleTimeString() + ' | Tick #' + (marketState[currentTicker] ? marketState[currentTicker].tick : 0) + ' | Mode: ' + modeLabel;
+    }
+
+    // =========================================================================
+    // TICKER SELECTION
+    // =========================================================================
+    function selectTicker(ticker) {
+        currentTicker = ticker;
+        document.querySelectorAll('.ticker-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.ticker === ticker);
+        });
+        document.getElementById('bs-spot').value = '';
+        document.getElementById('bs-strike').value = '';
+        document.getElementById('bs-iv').value = '';
+        document.getElementById('bs-dte').value = '';
+        refreshAll();
+    }
+
+    // =========================================================================
+    // CLOCK
+    // =========================================================================
+    function updateClock() {
+        document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load saved API key
+        loadApiKey();
+
+        // Check backend health
+        checkBackendHealth();
+        setInterval(checkBackendHealth, 30000);
+
+        init3DVolSurface();
+        initCharts();
+
+        document.querySelectorAll('.ticker-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectTicker(btn.dataset.ticker));
+        });
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        refreshAll();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshAll, 30000);
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (volSurface3D) {
+            const c = volSurface3D.container;
+            volSurface3D.camera.aspect = c.offsetWidth / c.offsetHeight;
+            volSurface3D.camera.updateProjectionMatrix();
+            volSurface3D.renderer.setSize(c.offsetWidth, c.offsetHeight);
+        }
+    });
+
+    console.log('Derivatives Trading Terminal v4.0 initialized');
+    console.log('Modes: DEMO (yellow) | LIVE/Polygon (green) | HYBRID (blue)');
+    console.log('Enter a Polygon.io API key for live spot prices');
+    console.log('Run trading-terminal-backend.py for full options data');
+    </script>
+</body>
+</html>

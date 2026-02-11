@@ -1,0 +1,397 @@
+│                                                                                                                                                                                                               │
+│ Gamma Trading System Enhancement Plan                                                                                                                                                                         │
+│                                                                                                                                                                                                               │
+│ Overview                                                                                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ Enhance the existing gamma backtesting framework with proper risk management, Schwab API integration for TOS data, and dashboard connectivity.                                                                │
+│                                                                                                                                                                                                               │
+│ Current Status                                                                                                                                                                                                │
+│                                                                                                                                                                                                               │
+│ - Phases 1-4: ✅ COMPLETED                                                                                                                                                                                    │
+│ - Phase 5: 🔄 IN PROGRESS - GEX methodology and alert system integration                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Phase 1: Risk Management Integration (Priority: Critical) ✅ COMPLETED                                                                                                                                        │
+│                                                                                                                                                                                                               │
+│ Files to Modify                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\engine\backtest_engine.py                                                                                                                                   │
+│                                                                                                                                                                                                               │
+│ Changes                                                                                                                                                                                                       │
+│                                                                                                                                                                                                               │
+│ 1. Add RiskManager import (line ~12):                                                                                                                                                                         │
+│ from analytics.risk_manager import RiskManager, PositionGreeks, RiskLevel                                                                                                                                     │
+│ 2. Modify __init__ (line ~134) to accept RiskManager:                                                                                                                                                         │
+│ def __init__(self, initial_capital: float = 100000,                                                                                                                                                           │
+│              risk_manager: RiskManager = None,                                                                                                                                                                │
+│              enable_risk_checks: bool = True,                                                                                                                                                                 │
+│              slippage_bps: float = 5.0,                                                                                                                                                                       │
+│              commission_per_contract: float = 0.65):                                                                                                                                                          │
+│ 3. Add pre-trade risk validation method _validate_trade_risk():                                                                                                                                               │
+│   - Check if trade would breach delta/gamma/vega/theta limits                                                                                                                                                 │
+│   - Return (is_valid, rejection_reason) tuple                                                                                                                                                                 │
+│ 4. Add risk-adjusted position sizing _calculate_risk_adjusted_size():                                                                                                                                         │
+│   - Use RiskManager's volatility-adjusted or fixed fractional sizing                                                                                                                                          │
+│   - Replace fixed size=1 in strategies                                                                                                                                                                        │
+│ 5. Add slippage/cost modeling _apply_slippage_and_costs():                                                                                                                                                    │
+│   - Apply slippage based on direction (adverse fill)                                                                                                                                                          │
+│   - Track cumulative transaction costs                                                                                                                                                                        │
+│ 6. Modify run() method (line ~228):                                                                                                                                                                           │
+│   - Call _validate_trade_risk() before opening positions                                                                                                                                                      │
+│   - Call _calculate_risk_adjusted_size() for position sizing                                                                                                                                                  │
+│   - Call _apply_slippage_and_costs() for realistic fills                                                                                                                                                      │
+│   - Register positions with RiskManager for Greeks tracking                                                                                                                                                   │
+│ 7. Enhance _calculate_metrics() (line ~282):                                                                                                                                                                  │
+│   - Add transaction_costs, net_return_pct, final_risk_level, risk_warnings                                                                                                                                    │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Phase 2: Schwab API Integration (Priority: High) ✅ COMPLETED                                                                                                                                                 │
+│                                                                                                                                                                                                               │
+│ Files to Create                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\data\loaders\schwab_connector.py                                                                                                                            │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\data\__init__.py                                                                                                                                            │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\data\loaders\__init__.py                                                                                                                                    │
+│                                                                                                                                                                                                               │
+│ New Classes in schwab_connector.py                                                                                                                                                                            │
+│                                                                                                                                                                                                               │
+│ 1. SchwabCredentials (dataclass): Store client_id, client_secret, tokens                                                                                                                                      │
+│ 2. SchwabAuthenticator: OAuth 2.0 flow                                                                                                                                                                        │
+│   - get_authorization_url() - Generate auth URL                                                                                                                                                               │
+│   - exchange_code_for_tokens() - Get access/refresh tokens                                                                                                                                                    │
+│   - refresh_access_token() - Auto-refresh before expiry                                                                                                                                                       │
+│   - Token persistence to ~/.schwab_tokens.json                                                                                                                                                                │
+│ 3. SchwabDataConnector: API client                                                                                                                                                                            │
+│   - get_quote(symbol) - Current quote                                                                                                                                                                         │
+│   - get_price_history(symbol, period, frequency) - OHLCV bars                                                                                                                                                 │
+│   - get_options_chain(symbol, strike_count) - Full chain with Greeks                                                                                                                                          │
+│                                                                                                                                                                                                               │
+│ Files to Modify                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\data\loaders\tos_loader.py                                                                                                                                  │
+│                                                                                                                                                                                                               │
+│ Changes to tos_loader.py                                                                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ 1. Add import: from .schwab_connector import create_schwab_connector                                                                                                                                          │
+│ 2. Add setup_schwab_api(client_id, client_secret) method                                                                                                                                                      │
+│ 3. Replace stub fetch_price_history() with real Schwab API call                                                                                                                                               │
+│ 4. Replace stub fetch_options_chain() with real Schwab API call                                                                                                                                               │
+│ 5. Add fetch_live_gamma_data(symbol) - Get real-time GEX from live chain                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Phase 3: Dashboard-Backtest Integration (Priority: Medium) ✅ COMPLETED                                                                                                                                       │
+│                                                                                                                                                                                                               │
+│ Files to Create                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\backend\unified_api.py                                                                                                                                                     │
+│                                                                                                                                                                                                               │
+│ Unified API Endpoints                                                                                                                                                                                         │
+│ ┌────────────────────────────┬────────┬─────────────────────────────────────┐                                                                                                                                 │
+│ │          Endpoint          │ Method │             Description             │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/data/status           │ GET    │ Data source status (simulated/live) │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/data/configure        │ POST   │ Configure Schwab credentials        │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/gamma/<symbol>        │ GET    │ Gamma data (auto-switches source)   │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/backtest/strategies   │ GET    │ List available strategies           │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/backtest/run          │ POST   │ Execute backtest with params        │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/backtest/results/<id> │ GET    │ Get backtest results                │                                                                                                                                 │
+│ ├────────────────────────────┼────────┼─────────────────────────────────────┤                                                                                                                                 │
+│ │ /api/risk/assess           │ POST   │ Assess portfolio risk               │                                                                                                                                 │
+│ └────────────────────────────┴────────┴─────────────────────────────────────┘                                                                                                                                 │
+│ Request Body for /api/backtest/run                                                                                                                                                                            │
+│                                                                                                                                                                                                               │
+│ {                                                                                                                                                                                                             │
+│   "strategies": ["breakout", "reversion", "fade", "momentum"],                                                                                                                                                │
+│   "start_date": "2024-01-01",                                                                                                                                                                                 │
+│   "end_date": "2024-12-31",                                                                                                                                                                                   │
+│   "initial_capital": 100000,                                                                                                                                                                                  │
+│   "symbol": "SPY",                                                                                                                                                                                            │
+│   "risk_settings": {                                                                                                                                                                                          │
+│     "max_risk_per_trade": 0.02,                                                                                                                                                                               │
+│     "max_portfolio_risk": 0.20,                                                                                                                                                                               │
+│     "enable_risk_checks": true                                                                                                                                                                                │
+│   }                                                                                                                                                                                                           │
+│ }                                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Phase 4: Complete Incomplete Strategy (Priority: Lower) ✅ COMPLETED                                                                                                                                          │
+│                                                                                                                                                                                                               │
+│ Files to Modify                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\strategies\gamma_strategies.py                                                                                                                              │
+│                                                                                                                                                                                                               │
+│ Changes                                                                                                                                                                                                       │
+│                                                                                                                                                                                                               │
+│ Complete vol_regime_transition() strategy (currently skeleton):                                                                                                                                               │
+│ - Entry on IV rank crossing thresholds (70 down = sell vol, 30 up = buy vol)                                                                                                                                  │
+│ - Combine with gamma regime for directional bias                                                                                                                                                              │
+│ - Add to STRATEGY_DESCRIPTIONS dict                                                                                                                                                                           │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Phase 5: GEX Methodology & Alert System Integration (Priority: High)                                                                                                                                          │
+│                                                                                                                                                                                                               │
+│ New Files Created                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\analytics\gex_calculator.py ✅                                                                                                                              │
+│ - C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest\analytics\alert_system.py ✅                                                                                                                                │
+│                                                                                                                                                                                                               │
+│ Files to Modify                                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ 1. data/loaders/tos_loader.py                                                                                                                                                                                 │
+│   - Import and use GEXCalculator from analytics.gex_calculator                                                                                                                                                │
+│   - Replace existing calculate_gamma_data() method with proper methodology                                                                                                                                    │
+│   - Add GEXConfig parameter to fetch_live_gamma_data()                                                                                                                                                        │
+│ 2. data/loaders/schwab_connector.py                                                                                                                                                                           │
+│   - Import AlertManager from analytics.alert_system                                                                                                                                                           │
+│   - Initialize AlertManager in SchwabDataConnector.__init__()                                                                                                                                                 │
+│   - Add check_connector_status() calls after API operations                                                                                                                                                   │
+│   - Trigger alerts on circuit breaker state changes                                                                                                                                                           │
+│   - Trigger alerts on rate limit utilization spikes                                                                                                                                                           │
+│ 3. backend/unified_api.py                                                                                                                                                                                     │
+│   - Add /api/alerts/active endpoint - Get active alerts                                                                                                                                                       │
+│   - Add /api/alerts/history endpoint - Get alert history                                                                                                                                                      │
+│   - Add /api/alerts/acknowledge endpoint - Acknowledge alert                                                                                                                                                  │
+│   - Add /api/gex/config endpoint - Get/set GEX methodology config                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ Integration Points                                                                                                                                                                                            │
+│                                                                                                                                                                                                               │
+│ TOS Loader Changes                                                                                                                                                                                            │
+│                                                                                                                                                                                                               │
+│ # In tos_loader.py                                                                                                                                                                                            │
+│ from analytics.gex_calculator import GEXCalculator, GEXConfig                                                                                                                                                 │
+│                                                                                                                                                                                                               │
+│ class TOSDataLoader:                                                                                                                                                                                          │
+│     def __init__(self, data_dir: str = None, gex_config: GEXConfig = None):                                                                                                                                   │
+│         self.gex_calculator = GEXCalculator(gex_config or GEXConfig())                                                                                                                                        │
+│                                                                                                                                                                                                               │
+│     def fetch_live_gamma_data(self, symbol: str = "SPY") -> Dict:                                                                                                                                             │
+│         # Use proper GEX calculation with methodology                                                                                                                                                         │
+│         chain_df = self.fetch_options_chain(symbol, strike_count=50)                                                                                                                                          │
+│         result = self.gex_calculator.calculate(chain_df, spot_price)                                                                                                                                          │
+│         return result.__dict__                                                                                                                                                                                │
+│                                                                                                                                                                                                               │
+│ Schwab Connector Changes                                                                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ # In schwab_connector.py                                                                                                                                                                                      │
+│ from analytics.alert_system import AlertManager, AlertThresholds                                                                                                                                              │
+│                                                                                                                                                                                                               │
+│ class SchwabDataConnector:                                                                                                                                                                                    │
+│     def __init__(self, auth, enable_alerts: bool = True):                                                                                                                                                     │
+│         if enable_alerts:                                                                                                                                                                                     │
+│             self.alert_manager = AlertManager(AlertThresholds())                                                                                                                                              │
+│                                                                                                                                                                                                               │
+│     def _execute_request(self, ...):                                                                                                                                                                          │
+│         # After request, check status                                                                                                                                                                         │
+│         self.alert_manager.check_connector_status(self.get_system_status())                                                                                                                                   │
+│                                                                                                                                                                                                               │
+│ Unified API Changes                                                                                                                                                                                           │
+│                                                                                                                                                                                                               │
+│ # New endpoints in unified_api.py                                                                                                                                                                             │
+│ @app.route('/api/alerts/active', methods=['GET'])                                                                                                                                                             │
+│ def get_active_alerts():                                                                                                                                                                                      │
+│     alerts = loader.schwab.alert_manager.get_active_alerts()                                                                                                                                                  │
+│     return jsonify([...])                                                                                                                                                                                     │
+│                                                                                                                                                                                                               │
+│ @app.route('/api/gex/config', methods=['GET', 'POST'])                                                                                                                                                        │
+│ def gex_config():                                                                                                                                                                                             │
+│     if request.method == 'POST':                                                                                                                                                                              │
+│         # Update GEX methodology settings                                                                                                                                                                     │
+│     return jsonify(loader.gex_calculator.config.__dict__)                                                                                                                                                     │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Critical Files Summary                                                                                                                                                                                        │
+│ ┌──────────────────────────────────┬────────┬────────────┐                                                                                                                                                    │
+│ │               File               │ Action │   Status   │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ engine/backtest_engine.py        │ MODIFY │ ✅ Done    │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ analytics/risk_manager.py        │ MINOR  │ ✅ Done    │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ data/loaders/tos_loader.py       │ MODIFY │ 🔄 Phase 5 │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ data/loaders/schwab_connector.py │ CREATE │ 🔄 Phase 5 │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ backend/unified_api.py           │ CREATE │ 🔄 Phase 5 │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ strategies/gamma_strategies.py   │ MODIFY │ ✅ Done    │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ analytics/gex_calculator.py      │ CREATE │ ✅ Done    │                                                                                                                                                    │
+│ ├──────────────────────────────────┼────────┼────────────┤                                                                                                                                                    │
+│ │ analytics/alert_system.py        │ CREATE │ ✅ Done    │                                                                                                                                                    │
+│ └──────────────────────────────────┴────────┴────────────┘                                                                                                                                                    │
+│ ---                                                                                                                                                                                                           │
+│ Verification Plan                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ 1. Risk Management                                                                                                                                                                                            │
+│                                                                                                                                                                                                               │
+│ cd "C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest"                                                                                                                                                          │
+│ python -c "                                                                                                                                                                                                   │
+│ from engine.backtest_engine import BacktestEngine                                                                                                                                                             │
+│ from analytics.risk_manager import RiskManager                                                                                                                                                                │
+│ rm = RiskManager(100000)                                                                                                                                                                                      │
+│ engine = BacktestEngine(100000, risk_manager=rm, enable_risk_checks=True)                                                                                                                                     │
+│ # Run backtest and verify risk rejections are logged                                                                                                                                                          │
+│ "                                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ 2. Schwab API                                                                                                                                                                                                 │
+│                                                                                                                                                                                                               │
+│ python -c "                                                                                                                                                                                                   │
+│ from data.loaders.tos_loader import TOSDataLoader                                                                                                                                                             │
+│ loader = TOSDataLoader()                                                                                                                                                                                      │
+│ loader.setup_schwab_api('YOUR_CLIENT_ID', 'YOUR_SECRET')                                                                                                                                                      │
+│ # Visit auth URL, get code, exchange for tokens                                                                                                                                                               │
+│ # Then: df = loader.fetch_price_history('SPY')                                                                                                                                                                │
+│ "                                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ 3. Unified API                                                                                                                                                                                                │
+│                                                                                                                                                                                                               │
+│ cd "C:\Scripts\Kimi K2 Agent Scripts\backend"                                                                                                                                                                 │
+│ python unified_api.py                                                                                                                                                                                         │
+│ # Test: curl http://localhost:5000/api/backtest/strategies                                                                                                                                                    │
+│ # Test: curl -X POST http://localhost:5000/api/backtest/run -H "Content-Type: application/json" -d '{"strategies":["all"]}'                                                                                   │
+│                                                                                                                                                                                                               │
+│ 4. Full Integration                                                                                                                                                                                           │
+│                                                                                                                                                                                                               │
+│ - Start unified API backend                                                                                                                                                                                   │
+│ - Run dashboard (start-dashboard.bat)                                                                                                                                                                         │
+│ - Verify backtest results appear in dashboard                                                                                                                                                                 │
+│ - Verify risk warnings display correctly                                                                                                                                                                      │
+│                                                                                                                                                                                                               │
+│ 5. GEX Calculator Integration                                                                                                                                                                                 │
+│                                                                                                                                                                                                               │
+│ cd "C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest"                                                                                                                                                          │
+│ python -c "                                                                                                                                                                                                   │
+│ from analytics.gex_calculator import GEXCalculator, GEXConfig                                                                                                                                                 │
+│ import pandas as pd                                                                                                                                                                                           │
+│                                                                                                                                                                                                               │
+│ # Test with sample data                                                                                                                                                                                       │
+│ config = GEXConfig(strike_range_pct=10.0, min_oi_threshold=100)                                                                                                                                               │
+│ calc = GEXCalculator(config)                                                                                                                                                                                  │
+│ print(calc.explain_methodology())                                                                                                                                                                             │
+│ "                                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ 6. Alert System Integration                                                                                                                                                                                   │
+│                                                                                                                                                                                                               │
+│ python -c "                                                                                                                                                                                                   │
+│ from analytics.alert_system import AlertManager, AlertThresholds                                                                                                                                              │
+│                                                                                                                                                                                                               │
+│ alerts = AlertManager(AlertThresholds())                                                                                                                                                                      │
+│ # Test circuit breaker alert                                                                                                                                                                                  │
+│ alerts.check_circuit_breaker('OPEN', 5)                                                                                                                                                                       │
+│ # Test success rate alert                                                                                                                                                                                     │
+│ alerts.check_success_rate(75.0)                                                                                                                                                                               │
+│                                                                                                                                                                                                               │
+│ summary = alerts.get_status_summary()                                                                                                                                                                         │
+│ print(f'Active alerts: {summary}')                                                                                                                                                                            │
+│ print(f'Should halt trading: {summary[\"should_halt_trading\"]}')                                                                                                                                             │
+│ "                                                                                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ ---                                                                                                                                                                                                           │
+│ Dependencies to Install                                                                                                                                                                                       │
+│                                                                                                                                                                                                               │
+│ pip install flask flask-cors flask-socketio requests pandas numpy                                                                                                                                             │
+│                                                                                                                                                                                                               │
+│ Schwab API Setup (One-Time)                                                                                                                                                                                   │
+│                                                                                                                                                                                                               │
+│ 1. Register at https://developer.schwab.com                                                                                                                                                                   │
+│ 2. Create app, get client_id and client_secret                                                                                                                                                                │
+│ 3. Set redirect_uri: https://127.0.0.1:8443/callback                                                                                                                                                          │
+│ 4. First auth requires browser-based OAuth consent                                                                                                                                                            │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+● I'll implement Phase 5 of the plan, which involves integrating the GEX methodology and alert system into the existing components. Let me first read the current state of the files that need to be modified.
+
+● Read 5 files (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ do all of them except schwab api.hold up, all or everything that doesnt require an api key from schwab because I won't have my sim card until tomorrow and they want to verify via text.
+
+● Looking at the files I just read, Phase 5 appears to be already complete. All the integration work has been done:
+
+  tos_loader.py - GEX Integration ✅
+  - Imports and uses GEXCalculator, GEXConfig, GEXResult
+  - __init__ accepts gex_config parameter
+  - fetch_live_gamma_data() uses proper GEX methodology
+  - Has get_gex_methodology() and update_gex_config() methods
+
+  schwab_connector.py - Alert Integration ✅
+  - Imports AlertManager, AlertThresholds, AlertLevel
+  - SchwabDataConnector has enable_alerts parameter
+  - Initializes AlertManager and tracks circuit breaker state
+  - _check_alerts_after_request() triggers alerts on failures
+  - Has get_active_alerts(), acknowledge_alert(), check_system_health() methods
+
+  unified_api.py - API Endpoints ✅
+  - /api/alerts/active, /api/alerts/history, /api/alerts/acknowledge, /api/alerts/clear, /api/alerts/summary, /api/alerts/test
+  - /api/gex/config (GET/POST), /api/gex/methodology
+
+  Let me run the verification tests from the plan to confirm everything works.
+
+● Bash(cd "C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest" && python -c "
+      from analytics.gex_calculator import GEXCalculator, GEXConfig…)
+  ⎿  GEX Calculator Test
+     ==================================================
+     … +31 lines (ctrl+o to expand)
+
+● Bash(cd "C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest" && python -c "
+      from analytics.alert_system import AlertManager, AlertThresholds…)
+  ⎿  Alert System Test
+     ==================================================
+     Active alerts: 2
+     … +6 lines (ctrl+o to expand)
+
+● Bash(cd "C:\Scripts\Kimi K2 Agent Scripts\gamma-backtest" && python -c "
+      from data.loaders.tos_loader import TOSDataLoader…)
+  ⎿  TOS Loader + GEX Integration Test
+     ==================================================
+     GEX config loaded: strike_range=15.0%
+     … +37 lines (ctrl+o to expand)
+
+● All tests pass. Let me also verify the unified API works (in simulated mode, no Schwab keys needed):
+
+● Bash(cd "C:\Scripts\Kimi K2 Agent Scripts\backend" && python -c "
+      import sys…)
+  ⎿  Unified API Test
+     ==================================================
+     Health check: 200
+     … +43 lines (ctrl+o to expand)
+
+● Phase 5 is complete and fully functional. All tests pass:
+  ┌──────────────────┬────────┬───────────────────────────────────────────────────┐
+  │    Component     │ Status │                       Notes                       │
+  ├──────────────────┼────────┼───────────────────────────────────────────────────┤
+  │ GEX Calculator   │ ✅     │ Proper methodology with DTE weighting             │
+  ├──────────────────┼────────┼───────────────────────────────────────────────────┤
+  │ Alert System     │ ✅     │ Circuit breaker, success rate, latency alerts     │
+  ├──────────────────┼────────┼───────────────────────────────────────────────────┤
+  │ TOS Loader + GEX │ ✅     │ Uses GEXCalculator for all gamma calculations     │
+  ├──────────────────┼────────┼───────────────────────────────────────────────────┤
+  │ Schwab + Alerts  │ ✅     │ Alert integration ready (activates when you auth) │
+  ├──────────────────┼────────┼───────────────────────────────────────────────────┤
+  │ Unified API      │ ✅     │ All endpoints working in simulated mode           │
+  └──────────────────┴────────┴───────────────────────────────────────────────────┘
+  Working API Endpoints (no Schwab auth needed):
+  - GET /api/health - System health check
+  - GET /api/data/status - Data source status (shows "simulated")
+  - GET /api/gamma/<symbol> - Simulated gamma data
+  - GET /api/gex/config - GEX methodology config
+  - POST /api/gex/config - Update GEX settings
+  - GET /api/gex/methodology - Human-readable methodology explanation
+  - GET /api/backtest/strategies - List 5 available strategies
+  - POST /api/backtest/run - Run backtests
+  - GET /api/alerts/active - Active alerts
+  - GET /api/alerts/history - Alert history
+  - POST /api/alerts/acknowledge - Acknowledge alert
+
+  To start the API:
+  cd "C:\Scripts\Kimi K2 Agent Scripts\backend"
+  python unified_api.py
+
+  Once you have your Schwab credentials tomorrow, just call POST /api/data/configure with your client_id and client_secret to enable live data.
+
+✻ Cogitated for 59sex

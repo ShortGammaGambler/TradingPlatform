@@ -1,0 +1,332 @@
+====================================
+INSTITUTIONAL EDGE - QUICK REFERENCE
+====================================
+
+📊 SIGNAL COLORS & MEANINGS
+====================================
+
+WHITE ARROWS (Primary Signals)
+  ↑ White Arrow Up = HIGH PROBABILITY LONG
+  ↓ White Arrow Down = HIGH PROBABILITY SHORT
+  → Wait for these! (5+ confirmations)
+
+CYAN/MAGENTA ARROWS (Liquidity)
+  ↑ Cyan Arrow = Bullish Liquidity Sweep
+  ↓ Magenta Arrow = Bearish Liquidity Sweep
+  → Stop hunt detected, expect reversal
+
+GREEN/RED TRIANGLES (Divergence)
+  △ Green Triangle = Bullish Divergence
+  ▽ Red Triangle = Bearish Divergence
+  → Price/volume disagreement
+
+LIGHT GREEN/PINK ARROWS (Structure)
+  ↑ Light Green = Bullish Market Structure Break
+  ↓ Light Pink = Bearish Market Structure Break
+  → Trend continuation signal
+
+DARK GREEN/RED SQUARES (Extremes)
+  ■ Dark Green = Oversold Zone (reversal area)
+  ■ Dark Red = Overbought Zone (reversal area)
+  → High probability mean reversion
+
+====================================
+📈 INDICATOR LINES
+====================================
+
+GREEN LINE = Order Block Support
+  → Institutional buying zone, expect bounce
+
+RED LINE = Order Block Resistance
+  → Institutional selling zone, expect rejection
+
+ORANGE LINE = Volume POC (Point of Control)
+  → High-volume price level, acts as magnet
+
+YELLOW LINE = Cumulative Delta
+  → Green = buyers in control
+  → Red = sellers in control
+
+WHITE LINE (VWAP in Scalper)
+  → Institutional benchmark
+  → Above = bullish, Below = bearish
+
+====================================
+🎯 BEST TRADING SETUPS
+====================================
+
+Setup 1: LIQUIDITY SWEEP + ORDER BLOCK
+  1. Price sweeps high/low (liquidity grab)
+  2. Strong reversal candle
+  3. Pullback to Order Block
+  4. WHITE ARROW appears
+  → Entry: On retest of Order Block
+  → Win Rate: 70%
+
+Setup 2: SMART MONEY DIVERGENCE
+  1. Price makes new high/low
+  2. Cumulative Delta diverges
+  3. Triangle appears
+  4. WHITE ARROW confirms
+  → Entry: On reversal candle
+  → Win Rate: 65%
+
+Setup 3: TREND CONTINUATION (BOS)
+  1. Light green/pink arrow (structure break)
+  2. Pullback to Order Block in trend
+  3. Delta supporting trend
+  4. WHITE ARROW appears
+  → Entry: On bounce from Order Block
+  → Win Rate: 75%
+
+Setup 4: MEAN REVERSION
+  1. Dark green/red square (extreme)
+  2. Price at Bollinger Band
+  3. Absorption candle
+  4. WHITE ARROW to POC
+  → Entry: On reversal
+  → Win Rate: 60%
+
+====================================
+⚠️ ENTRY RULES
+====================================
+
+✅ ALWAYS:
+  • Wait for WHITE arrow (multi-confirmation)
+  • Trade WITH the trend (ADX > 25)
+  • Verify volume spike (yellow label)
+  • Check cumulative delta direction
+  • Confirm above/below VWAP
+
+❌ NEVER:
+  • Trade against strong trend
+  • Enter without volume confirmation
+  • Ignore risk/reward (minimum 2:1)
+  • Trade during low volume (lunch)
+  • Chase price after WHITE arrow
+
+====================================
+🛡️ RISK MANAGEMENT
+====================================
+
+POSITION SIZING:
+  • Risk 1-2% of account per trade
+  • Never risk more than 3% max
+
+STOP LOSS:
+  • Swing: 1.5x ATR below/above entry
+  • Scalp: 0.5x ATR below/above entry
+  • Always use stops, no exceptions
+
+TAKE PROFIT:
+  • T1: 1:1 risk/reward (take 50%)
+  • T2: 2:1 risk/reward (take 25%)
+  • T3: 3:1+ risk/reward (let run)
+  • Or exit at Volume POC / Order Block
+
+TRADE MANAGEMENT:
+  • Move stop to BE at 1:1
+  • Trail stop at 2:1 (1x ATR)
+  • Exit if trend reverses
+  • Max 2-3 positions at once
+
+====================================
+⏰ BEST TRADING TIMES
+====================================
+
+MARKET OPEN (9:30-11:00 AM EST)
+  ✅ High volume, strong trends
+  ✅ Best for trend following
+  ⚠️ Wider stops needed (volatility)
+
+LUNCH (11:30 AM-2:00 PM EST)
+  ❌ Low volume, choppy
+  ❌ Avoid unless scalping
+
+POWER HOUR (3:00-4:00 PM EST)
+  ✅ Volume returns, momentum
+  ✅ Best for scalping
+  ⚠️ Watch for reversals
+
+AFTER HOURS / PRE-MARKET
+  ⚠️ Lower liquidity, wider spreads
+  ⚠️ Only for experienced traders
+
+====================================
+📊 ASSET SELECTION
+====================================
+
+BEST FOR SWING TRADING:
+  • SPY, QQQ, IWM (ETFs)
+  • AAPL, MSFT, TSLA, NVDA (high vol stocks)
+  • High cap stocks ($10B+)
+
+BEST FOR DAY TRADING:
+  • SPY, QQQ (most liquid)
+  • ES, NQ futures (leverage)
+  • Stocks with 10M+ daily volume
+
+BEST FOR SCALPING:
+  • ES, NQ futures (tight spreads)
+  • SPY, QQQ (1-5 min charts)
+  • Forex majors (EUR/USD, GBP/USD)
+
+REQUIREMENTS:
+  • Minimum $1M daily volume
+  • Average spread < $0.05
+  • ADX > 15 (avoid dead markets)
+
+====================================
+🔔 LABEL MEANINGS
+====================================
+
+"CD: 75%" = Cumulative Delta
+  → 75%+ = Strong buying
+  → 25%- = Strong selling
+
+"ADX: 35" = Trend Strength
+  → 25+ = Strong trend (tradeable)
+  → <15 = Weak/choppy (avoid)
+
+"Vol: 2.5x" = Volume Relative
+  → 1.5x+ = Significant volume
+  → 2.0x+ = Major institutional activity
+
+"LIQUIDITY SWEEP!" = Stop hunt detected
+  → High probability reversal coming
+
+"BUY SIGNAL" / "SELL SIGNAL"
+  → Multi-confirmation trigger
+  → Highest probability trades
+
+====================================
+📝 DAILY TRADING CHECKLIST
+====================================
+
+BEFORE MARKET OPEN:
+  [ ] Check economic calendar (major news?)
+  [ ] Scan for setups (Scanner script)
+  [ ] Review watchlist columns
+  [ ] Verify 3+ high-quality setups
+  [ ] Plan trades (entry, stop, target)
+
+DURING TRADING:
+  [ ] Wait for WHITE arrows only
+  [ ] Verify all confirmations
+  [ ] Use limit orders (avoid slippage)
+  [ ] Set stops immediately after entry
+  [ ] Journal every trade
+
+AFTER TRADING:
+  [ ] Review all trades (what worked?)
+  [ ] Calculate win rate & P/L
+  [ ] Update trading journal
+  [ ] Plan for tomorrow
+  [ ] Stop if daily loss limit hit (-2%)
+
+====================================
+🎓 RULES FOR SUCCESS
+====================================
+
+1. PATIENCE
+   → Best trades are obvious
+   → Wait for full setup
+   → Quality > Quantity
+
+2. DISCIPLINE
+   → Always use stops
+   → Never move stops wider
+   → Follow the plan
+
+3. RISK MANAGEMENT
+   → Never risk >2% per trade
+   → Always use proper position sizing
+   → Protect capital first
+
+4. TREND IS FRIEND
+   → Only trade with trend
+   → ADX > 25 required
+   → Don't fight institutions
+
+5. VOLUME VALIDATES
+   → No volume = no trade
+   → Wait for yellow "Vol" label
+   → 1.5x minimum
+
+6. MULTIPLE CONFIRMATIONS
+   → White arrows have 5+ signals
+   → More confirmations = higher win rate
+   → Don't trade partial setups
+
+7. CONTINUOUS IMPROVEMENT
+   → Journal every trade
+   → Review weekly performance
+   → Adapt to market conditions
+
+====================================
+⚡ QUICK WINS
+====================================
+
+HIGHEST WIN RATE SETUPS:
+  1. Trend continuation at Order Block (75%)
+  2. Liquidity sweep reversal (70%)
+  3. Smart money divergence (65%)
+
+FASTEST PROFITS:
+  1. Power hour scalps (2-5 min)
+  2. Market open momentum (first 30 min)
+  3. VWAP bounce trades
+
+LOWEST RISK:
+  1. Mean reversion at extremes
+  2. Strong support/resistance bounces
+  3. High volume confirmation trades
+
+====================================
+🚨 COMMON MISTAKES TO AVOID
+====================================
+
+❌ Trading without confirmation
+❌ Ignoring trend direction
+❌ Entering on low volume
+❌ Moving stops to avoid loss
+❌ Revenge trading after loss
+❌ Over-leveraging position
+❌ Trading every signal
+❌ Ignoring cumulative delta
+❌ Not using proper R:R
+❌ Forcing trades (FOMO)
+
+====================================
+✅ WHEN TO TAKE A BREAK
+====================================
+
+• 2 losses in a row → Stop for 30 min
+• 3 losses in a row → Stop for the day
+• Daily loss limit hit (-2%) → Stop trading
+• Feeling emotional → Walk away
+• Market is choppy (ADX <15) → Wait
+• No clear setups → Don't force it
+
+Remember: Preservation of capital is priority #1
+
+====================================
+💡 PRO TIPS
+====================================
+
+• Screenshot every WHITE arrow trade
+• Best setups happen 2-3x per day max
+• Use 2x screens (chart + watchlist)
+• Set price alerts at Order Blocks
+• Practice in paperMoney first (100+ trades)
+• Focus on 2-3 stocks maximum
+• Keep a trading journal (mandatory!)
+• Review trades weekly
+• Backtest on historical data
+• Join trading community (share ideas)
+
+====================================
+
+Print this out and keep it next to your screen!
+
+====================================

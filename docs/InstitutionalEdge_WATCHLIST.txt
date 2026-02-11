@@ -1,0 +1,211 @@
+# INSTITUTIONAL EDGE WATCHLIST COLUMNS
+# Add these as custom columns to your TOS watchlist
+# Shows real-time signals for all stocks in your watchlist
+
+#==============================================
+# COLUMN 1: TREND DIRECTION
+#==============================================
+
+# Name this column: "Trend"
+
+def ema8 = ExpAvgPrice(close, 8);
+def ema21 = ExpAvgPrice(close, 21);
+def ema50 = ExpAvgPrice(close, 50);
+
+def uptrend = ema8 > ema21 and ema21 > ema50;
+def downtrend = ema8 < ema21 and ema21 < ema50;
+
+plot trend = if uptrend then 1 else if downtrend then -1 else 0;
+
+trend.AssignValueColor(
+    if uptrend then Color.GREEN
+    else if downtrend then Color.RED
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 2: SIGNAL STRENGTH
+#==============================================
+
+# Name this column: "Signal"
+
+def avgVol = Average(volume, 50);
+def volSpike = volume > avgVol * 1.5;
+
+def buyVol = if close > open then volume else 0;
+def sellVol = if close < open then volume else 0;
+def volDelta = buyVol - sellVol;
+
+def bullishOB = close > open and close[1] < open[1] and volume > avgVol * 1.5;
+def bearishOB = close < open and close[1] > open[1] and volume > avgVol * 1.5;
+
+def hhv = Highest(high, 50);
+def llv = Lowest(low, 50);
+def bullishSweep = low < llv[1] and close > open and volSpike;
+def bearishSweep = high > hhv[1] and close < open and volSpike;
+
+def strongBuy = uptrend and (bullishSweep or bullishOB) and volDelta > 0;
+def strongSell = downtrend and (bearishSweep or bearishOB) and volDelta < 0;
+
+plot signal = if strongBuy then 10 else if strongSell then -10 else 0;
+
+signal.AssignValueColor(
+    if strongBuy then Color.DARK_GREEN
+    else if strongSell then Color.DARK_RED
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 3: VOLUME RELATIVE
+#==============================================
+
+# Name this column: "Vol Rel"
+
+def avgVolume = Average(volume, 50);
+def relVol = volume / avgVolume;
+
+plot volumeRelative = Round(relVol, 2);
+
+volumeRelative.AssignValueColor(
+    if relVol > 2.0 then Color.YELLOW
+    else if relVol > 1.5 then Color.GREEN
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 4: CUMULATIVE DELTA %
+#==============================================
+
+# Name this column: "Delta %"
+
+def buyVolume = if close > open then volume * ((close - open) / (high - low)) else 0;
+def sellVolume = if close < open then volume * ((open - close) / (high - low)) else 0;
+
+def deltaValue = buyVolume - sellVolume;
+def cumDelta = TotalSum(deltaValue);
+def cumDeltaNorm = (cumDelta - Lowest(cumDelta, 50)) / (Highest(cumDelta, 50) - Lowest(cumDelta, 50)) * 100;
+
+plot delta = Round(cumDeltaNorm, 1);
+
+delta.AssignValueColor(
+    if cumDeltaNorm > 75 then Color.DARK_GREEN
+    else if cumDeltaNorm > 50 then Color.GREEN
+    else if cumDeltaNorm < 25 then Color.DARK_RED
+    else if cumDeltaNorm < 50 then Color.RED
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 5: ADX STRENGTH
+#==============================================
+
+# Name this column: "ADX"
+
+def adxValue = ADX(14);
+
+plot adx = Round(adxValue, 1);
+
+adx.AssignValueColor(
+    if adxValue > 40 then Color.YELLOW
+    else if adxValue > 25 then Color.GREEN
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 6: SETUP QUALITY
+#==============================================
+
+# Name this column: "Setup"
+
+def strongTrend = ADX(14) > 25;
+def basis = SimpleMovingAvg(close, 20);
+def dev = 2 * StDev(close, 20);
+def oversold = close < (basis - dev) and RSI() < 30;
+def overbought = close > (basis + dev) and RSI() > 70;
+
+def vwapValue = vwap();
+def aboveVWAP = close > vwapValue;
+def belowVWAP = close < vwapValue;
+
+# Score the setup (0-5)
+def setupScore =
+    (if uptrend or downtrend then 1 else 0) +
+    (if strongTrend then 1 else 0) +
+    (if volSpike then 1 else 0) +
+    (if bullishSweep or bearishSweep then 1 else 0) +
+    (if bullishOB or bearishOB then 1 else 0);
+
+plot setup = setupScore;
+
+setup.AssignValueColor(
+    if setupScore >= 4 then Color.YELLOW
+    else if setupScore >= 3 then Color.GREEN
+    else if setupScore >= 2 then Color.ORANGE
+    else Color.GRAY
+);
+
+#==============================================
+# COLUMN 7: ENTRY SIGNAL
+#==============================================
+
+# Name this column: "Entry"
+
+def longSetup =
+    uptrend and
+    strongTrend and
+    (bullishSweep or bullishOB or oversold) and
+    volDelta > 0 and
+    volSpike and
+    aboveVWAP;
+
+def shortSetup =
+    downtrend and
+    strongTrend and
+    (bearishSweep or bearishOB or overbought) and
+    volDelta < 0 and
+    volSpike and
+    belowVWAP;
+
+plot entry = if longSetup then 1 else if shortSetup then -1 else 0;
+
+entry.AssignValueColor(
+    if longSetup then Color.CYAN
+    else if shortSetup then Color.MAGENTA
+    else Color.GRAY
+);
+
+#==============================================
+# HOW TO ADD THESE COLUMNS TO WATCHLIST:
+#==============================================
+
+# 1. Open your watchlist in ThinkorSwim
+# 2. Click the gear icon (customize)
+# 3. Click "Customize..." at bottom
+# 4. Click "+" to add custom column
+# 5. Select "Custom" > "thinkScript Editor"
+# 6. Paste ONE column script at a time
+# 7. Name it as indicated above
+# 8. Click "OK"
+# 9. Repeat for all 7 columns
+#
+# WATCHLIST WILL SHOW:
+# - Trend: Green (up), Red (down), Gray (sideways)
+# - Signal: 10 (strong buy), -10 (strong sell), 0 (none)
+# - Vol Rel: 2.0+ = high volume spike
+# - Delta %: 0-100 (buyer/seller strength)
+# - ADX: 25+ = strong trend
+# - Setup: 0-5 (quality score)
+# - Entry: 1 (long), -1 (short), 0 (no signal)
+#
+# SORT WATCHLIST BY:
+# - Setup column (descending) to find best opportunities
+# - Entry column to see active signals
+# - Vol Rel to see volume spikes
+#
+# FILTER FOR BEST TRADES:
+# - Setup >= 4
+# - ADX > 25
+# - Vol Rel > 1.5
+# - Entry = 1 or -1
+
+#==============================================

@@ -1,0 +1,53 @@
+# Environment
+.env
+.env.local
+.env.production
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data (keep structure, ignore contents)
+data/*.db
+data/*.sqlite
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Secrets
+*.pem
+*.key
+token.json
+schwab_tokens.json
+
+# Node (frontend)
+node_modules/
+frontend/dist/
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,114 @@
+# INSTITUTIONAL EDGE SCANNER - ThinkorSwim Stock Scanner
+# Finds stocks with institutional setups ready to trade
+# Use in: Scan > Stock Hacker > Custom Script
+
+#==============================================
+# SCANNER FOR HIGH-PROBABILITY SETUPS
+#==============================================
+
+def close = close;
+def high = high;
+def low = low;
+def open = open;
+def volume = volume;
+
+# Volume criteria
+def avgVol = Average(volume, 50);
+def highVolume = volume > avgVol * 1.5;
+
+# Price and volatility filters
+def price = close;
+def atr = ATR(14);
+def minPrice = 10; # Avoid penny stocks
+def maxPrice = 1000; # Avoid overly expensive stocks
+def validPrice = price >= minPrice and price <= maxPrice;
+
+# Liquidity requirement
+def avgDollarVolume = avgVol * price;
+def minDollarVolume = 50000000; # $50M daily volume minimum
+def liquidStock = avgDollarVolume >= minDollarVolume;
+
+# Trend strength
+def adx = ADX(14);
+def strongTrend = adx > 25;
+
+# Buy volume vs sell volume
+def buyVol = if close > open then volume * ((close - open) / (high - low)) else 0;
+def sellVol = if close < open then volume * ((open - close) / (high - low)) else 0;
+def volDelta = buyVol - sellVol;
+def cumDelta = TotalSum(volDelta);
+
+# Order Block detection
+def bullishOB = close > open and close[1] < open[1] and volume > avgVol * 1.5 and low[1] < low;
+def bearishOB = close < open and close[1] > open[1] and volume > avgVol * 1.5 and high[1] > high;
+
+# Liquidity sweep
+def hhv = Highest(high, 50);
+def llv = Lowest(low, 50);
+def bullishSweep = low < llv[1] and close > open and volume > avgVol * 1.3;
+def bearishSweep = high > hhv[1] and close < open and volume > avgVol * 1.3;
+
+# Smart Money Divergence
+def priceHH = high > high[1] and high[1] > high[2];
+def deltaLH = cumDelta < cumDelta[1] and cumDelta[1] > cumDelta[2];
+def priceLL = low < low[1] and low[1] < low[2];
+def deltaHL = cumDelta > cumDelta[1] and cumDelta[1] < cumDelta[2];
+def bearishDiv = priceHH and deltaLH;
+def bullishDiv = priceLL and deltaHL;
+
+# Bollinger Bands extremes
+def basis = SimpleMovingAvg(close, 20);
+def dev = 2 * StDev(close, 20);
+def upperBand = basis + dev;
+def lowerBand = basis - dev;
+def oversold = close < lowerBand and RSI() < 30;
+def overbought = close > upperBand and RSI() > 70;
+
+# LONG SETUP CONDITIONS
+def longSetup =
+    validPrice and
+    liquidStock and
+    strongTrend and
+    (bullishSweep or bullishDiv or (oversold and bullishOB)) and
+    volDelta > 0;
+
+# SHORT SETUP CONDITIONS
+def shortSetup =
+    validPrice and
+    liquidStock and
+    strongTrend and
+    (bearishSweep or bearishDiv or (overbought and bearishOB)) and
+    volDelta < 0;
+
+# ANY SETUP (for general screening)
+def anySetup = longSetup or shortSetup;
+
+# SCANNER OUTPUTS
+plot scan = anySetup;
+plot longScan = longSetup;
+plot shortScan = shortSetup;
+
+# LABELS (for visual confirmation)
+AddLabel(yes, if longSetup then "LONG" else if shortSetup then "SHORT" else "NEUTRAL",
+         if longSetup then Color.GREEN else if shortSetup then Color.RED else Color.GRAY);
+
+#==============================================
+# HOW TO USE THIS SCANNER
+#==============================================
+
+# 1. Open ThinkOrSwim
+# 2. Go to: Scan > Stock Hacker
+# 3. Click "Add Filter" > "Study"
+# 4. Select "Custom" > "thinkScript Editor"
+# 5. Paste this entire code
+# 6. Name it "InstitutionalEdge_Scanner"
+# 7. For the filter, use: scan is true
+# 8. Or use: longScan is true (for longs only)
+# 9. Or use: shortScan is true (for shorts only)
+# 10. Click "Scan" to find stocks
+
+# RECOMMENDED SCAN SETTINGS:
+# - Scan in: S&P 500 or Russell 2000 or NASDAQ 100
+# - Frequency: Every 5 minutes
+# - Results: Sort by volume (highest first)
+# - Timeframe: Use on 5-min, 15-min, or 1-hour charts

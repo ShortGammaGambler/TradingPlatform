@@ -1,0 +1,329 @@
+# INSTITUTIONAL SCALPER - Ultra-Fast Intraday Trading
+# Optimized for 1-min, 2-min, and 5-min charts
+# Designed for SPY, QQQ, ES, NQ, and high-volume stocks
+
+declare upper;
+
+#==============================================
+# SCALPING-SPECIFIC INPUTS
+#==============================================
+
+input fastPeriod = 20; # Faster lookback for scalping
+input volumeMultiplier = 1.2; # Lower threshold for more signals
+input showMicroStructure = yes; # Show small timeframe breaks
+input showScalpZones = yes; # Show optimal entry zones
+input enableQuickAlerts = yes; # Faster alert triggers
+input riskRewardRatio = 2.0; # Target for scalps
+
+# Price data
+def h = high;
+def l = low;
+def c = close;
+def o = open;
+def v = volume;
+
+#==============================================
+# FAST MOVING AVERAGES (TAPE READING)
+#==============================================
+
+def ema8 = ExpAvgPrice(c, 8);
+def ema21 = ExpAvgPrice(c, 21);
+def ema50 = ExpAvgPrice(c, 50);
+
+# Trend direction
+def uptrend = ema8 > ema21 and ema21 > ema50;
+def downtrend = ema8 < ema21 and ema21 < ema50;
+
+plot EMA8 = ema8;
+plot EMA21 = ema21;
+
+EMA8.SetDefaultColor(Color.CYAN);
+EMA8.SetLineWeight(2);
+EMA21.SetDefaultColor(Color.YELLOW);
+EMA21.SetLineWeight(2);
+
+#==============================================
+# VOLUME ANALYSIS (TICK-LEVEL)
+#==============================================
+
+def avgVol = Average(v, fastPeriod);
+def relativeVol = v / avgVol;
+def volSpike = relativeVol > volumeMultiplier;
+
+# Buy vs Sell pressure (fast calculation)
+def bullishBar = c > o;
+def bearishBar = c < o;
+def buyPressure = if bullishBar then v else 0;
+def sellPressure = if bearishBar then v else 0;
+
+# Cumulative delta (short-term)
+def deltaFast = buyPressure - sellPressure;
+def cumDeltaFast = Sum(deltaFast, fastPeriod);
+
+# Delta momentum
+def deltaUp = cumDeltaFast > cumDeltaFast[1];
+def deltaDown = cumDeltaFast < cumDeltaFast[1];
+
+#==============================================
+# MICRO ORDER BLOCKS (SCALPING ZONES)
+#==============================================
+
+# Small timeframe order blocks
+def microBullOB = bullishBar and v > avgVol and l > l[1];
+def microBearOB = bearishBar and v > avgVol and h < h[1];
+
+def scalpSupport = if microBullOB then l else scalpSupport[1];
+def scalpResistance = if microBearOB then h else scalpResistance[1];
+
+plot ScalpSupport = if showScalpZones then scalpSupport else Double.NaN;
+plot ScalpResistance = if showScalpZones then scalpResistance else Double.NaN;
+
+ScalpSupport.SetDefaultColor(Color.DARK_GREEN);
+ScalpSupport.SetLineWeight(1);
+ScalpSupport.SetStyle(Curve.SHORT_DASH);
+
+ScalpResistance.SetDefaultColor(Color.DARK_RED);
+ScalpResistance.SetLineWeight(1);
+ScalpResistance.SetStyle(Curve.SHORT_DASH);
+
+#==============================================
+# MOMENTUM BURSTS (SCALP ENTRIES)
+#==============================================
+
+# Detect strong momentum candles
+def range = h - l;
+def avgRange = Average(range, fastPeriod);
+def bigCandle = range > avgRange * 1.5;
+
+# Momentum burst signals
+def bullMomentum = bullishBar and bigCandle and volSpike and deltaUp and c > ema8;
+def bearMomentum = bearishBar and bigCandle and volSpike and deltaDown and c < ema8;
+
+#==============================================
+# SCALP ENTRY ZONES (PULLBACK TO EMA)
+#==============================================
+
+# Buy the dip in uptrend
+def buyZone = uptrend and l <= ema8 and l[1] > ema8 and deltaUp;
+
+# Sell the rip in downtrend
+def sellZone = downtrend and h >= ema8 and h[1] < ema8 and deltaDown;
+
+plot BuyZoneSignal = if buyZone then l - (range * 0.2) else Double.NaN;
+plot SellZoneSignal = if sellZone then h + (range * 0.2) else Double.NaN;
+
+BuyZoneSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_POINTS);
+BuyZoneSignal.SetDefaultColor(Color.GREEN);
+BuyZoneSignal.SetLineWeight(3);
+
+SellZoneSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_POINTS);
+SellZoneSignal.SetDefaultColor(Color.RED);
+SellZoneSignal.SetLineWeight(3);
+
+#==============================================
+# VWAP BANDS (INSTITUTIONAL LEVELS)
+#==============================================
+
+def vwap = vwap();
+def vwapDev = StDev(c - vwap, fastPeriod);
+def vwapUpper = vwap + vwapDev;
+def vwapLower = vwap - vwapDev;
+
+plot VWAP = vwap;
+plot VWAPUpper = vwapUpper;
+plot VWAPLower = vwapLower;
+
+VWAP.SetDefaultColor(Color.WHITE);
+VWAP.SetLineWeight(2);
+VWAPUpper.SetDefaultColor(Color.DARK_ORANGE);
+VWAPUpper.SetStyle(Curve.SHORT_DASH);
+VWAPLower.SetDefaultColor(Color.DARK_ORANGE);
+VWAPLower.SetStyle(Curve.SHORT_DASH);
+
+# VWAP crosses (institutional participation)
+def vwapCrossUp = c crosses above vwap;
+def vwapCrossDown = c crosses below vwap;
+
+#==============================================
+# MICRO STRUCTURE BREAKS (SCALP CONFIRMATIONS)
+#==============================================
+
+# Very short-term structure
+def microHH = h > h[1] and h[1] > h[2];
+def microLL = l < l[1] and l[1] < l[2];
+
+# Structure breaks
+def bullBreak = microHH and volSpike and uptrend;
+def bearBreak = microLL and volSpike and downtrend;
+
+plot MicroBreakUp = if showMicroStructure and bullBreak then l - (range * 0.3) else Double.NaN;
+plot MicroBreakDown = if showMicroStructure and bearBreak then h + (range * 0.3) else Double.NaN;
+
+MicroBreakUp.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+MicroBreakUp.SetDefaultColor(Color.LIGHT_GREEN);
+MicroBreakUp.SetLineWeight(2);
+
+MicroBreakDown.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+MicroBreakDown.SetDefaultColor(Color.PINK);
+MicroBreakDown.SetLineWeight(2);
+
+#==============================================
+# TICK SCALP SIGNALS (HIGH FREQUENCY)
+#==============================================
+
+# Fast RSI for momentum
+def rsi5 = RSI(5);
+def oversoldFast = rsi5 < 25;
+def overboughtFast = rsi5 > 75;
+
+# Stochastic for quick reversals
+def stoch = StochasticFull(5, 3, 3, 3);
+def stochOversold = stoch < 20;
+def stochOverbought = stoch > 80;
+
+# Combined fast signals
+def fastBuySignal =
+    uptrend and
+    (buyZone or (vwapCrossUp and deltaUp)) and
+    (oversoldFast or stochOversold) and
+    volSpike;
+
+def fastSellSignal =
+    downtrend and
+    (sellZone or (vwapCrossDown and deltaDown)) and
+    (overboughtFast or stochOverbought) and
+    volSpike;
+
+#==============================================
+# CONFIRMATION SCALP SIGNALS
+#==============================================
+
+# Multi-confirmation for best scalps
+def scalpLong =
+    uptrend and
+    buyZone and
+    deltaUp and
+    volSpike and
+    bullBreak and
+    c > vwap;
+
+def scalpShort =
+    downtrend and
+    sellZone and
+    deltaDown and
+    volSpike and
+    bearBreak and
+    c < vwap;
+
+plot ScalpLongSignal = if scalpLong then l - (ATR() * 0.5) else Double.NaN;
+plot ScalpShortSignal = if scalpShort then h + (ATR() * 0.5) else Double.NaN;
+
+ScalpLongSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+ScalpLongSignal.SetDefaultColor(Color.WHITE);
+ScalpLongSignal.SetLineWeight(5);
+
+ScalpShortSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+ScalpShortSignal.SetDefaultColor(Color.WHITE);
+ScalpShortSignal.SetLineWeight(5);
+
+#==============================================
+# SCALPING TARGETS & STOPS
+#==============================================
+
+def atr = ATR(14);
+
+# Tight stops for scalping
+def stopLong = l - (atr * 0.5);
+def stopShort = h + (atr * 0.5);
+
+# Quick targets (2:1 minimum)
+def targetLong = c + (atr * riskRewardRatio * 0.5);
+def targetShort = c - (atr * riskRewardRatio * 0.5);
+
+# Plot targets when signal appears
+def longTarget = if scalpLong then targetLong else Double.NaN;
+def shortTarget = if scalpShort then targetShort else Double.NaN;
+
+plot LongTargetLine = longTarget;
+plot ShortTargetLine = shortTarget;
+
+LongTargetLine.SetDefaultColor(Color.GREEN);
+LongTargetLine.SetStyle(Curve.LONG_DASH);
+ShortTargetLine.SetDefaultColor(Color.RED);
+ShortTargetLine.SetStyle(Curve.LONG_DASH);
+
+#==============================================
+# VOLUME PROFILE BAR COLORING
+#==============================================
+
+AssignPriceColor(
+    if scalpLong then Color.DARK_GREEN
+    else if scalpShort then Color.DARK_RED
+    else if uptrend and deltaUp then Color.GREEN
+    else if downtrend and deltaDown then Color.RED
+    else Color.GRAY
+);
+
+#==============================================
+# REAL-TIME ALERTS (FAST SCALPING)
+#==============================================
+
+Alert(scalpLong, "SCALP LONG", Alert.BAR, Sound.Ding);
+Alert(scalpShort, "SCALP SHORT", Alert.BAR, Sound.Ding);
+Alert(fastBuySignal, "Fast Buy Setup", Alert.BAR, Sound.Chimes);
+Alert(fastSellSignal, "Fast Sell Setup", Alert.BAR, Sound.Bell);
+
+#==============================================
+# PERFORMANCE LABELS
+#==============================================
+
+AddLabel(yes, "Trend: " + if uptrend then "UP" else if downtrend then "DOWN" else "FLAT",
+         if uptrend then Color.GREEN else if downtrend then Color.RED else Color.GRAY);
+
+AddLabel(yes, "Vol: " + Round(relativeVol, 2) + "x",
+         if volSpike then Color.YELLOW else Color.GRAY);
+
+AddLabel(yes, "Delta: " + if deltaUp then "BUY" else "SELL",
+         if deltaUp then Color.GREEN else Color.RED);
+
+AddLabel(yes, "VWAP: " + if c > vwap then "ABOVE" else "BELOW",
+         if c > vwap then Color.GREEN else Color.RED);
+
+AddLabel(scalpLong, "🟢 SCALP LONG", Color.WHITE);
+AddLabel(scalpShort, "🔴 SCALP SHORT", Color.WHITE);
+
+AddLabel(yes, "Target R/R: " + riskRewardRatio + ":1", Color.CYAN);
+
+#==============================================
+# SCALPING NOTES
+#==============================================
+
+# BEST TIMES TO SCALP:
+# - 9:30 AM - 10:30 AM EST (market open volatility)
+# - 3:00 PM - 4:00 PM EST (power hour)
+# - Avoid 11:30 AM - 2:00 PM (lunch chop)
+
+# BEST ASSETS:
+# - SPY, QQQ (high liquidity, tight spreads)
+# - ES, NQ futures (leverage, 23-hour trading)
+# - High volume stocks (>10M shares/day)
+
+# SCALPING RULES:
+# 1. Only trade WITH the trend (EMA alignment)
+# 2. Wait for pullback to EMA8 or VWAP
+# 3. Enter on WHITE arrow (full confirmation)
+# 4. Stop loss: 0.5x ATR
+# 5. Target: 2x ATR minimum (2:1 R/R)
+# 6. Exit 50% at 1:1, let rest run
+# 7. Maximum 3-5 trades per session
+# 8. If 2 losses in a row, STOP trading
+# 9. Never add to losing position
+# 10. Always use limit orders (avoid slippage)
+
+# WIN RATE TARGETS:
+# - 65-70% win rate with 2:1 R/R
+# - 10-15 scalps per day maximum
+# - 2-5% daily profit target
+# - Stop at -1.5% daily loss
+
+#==============================================
