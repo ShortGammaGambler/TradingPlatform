@@ -1,6 +1,4 @@
-```python
-import numpy as np 
-import pandas as pd
+﻿import pandas as pd
 import plotly.graph_objs as go
 
 def _update_layout(fig, title, xaxis_range=None, height=600):
@@ -253,5 +251,3 @@ def plotly_candlestick_gex(ohlc, historic_gex=None):
         spikemode="across",
     )
     
-    return fig
-```
